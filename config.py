@@ -45,10 +45,10 @@ MESSAGES = {
     "ABOUT": "<b>›› ғᴏʀ ᴍᴏʀᴇ: @yagamiuniversse \n <blockquote expandable>›› ᴜᴘᴅᴀᴛᴇs ᴄʜᴀɴɴᴇʟ: <a href='https://t.me/yagamiuniversse'>Cʟɪᴄᴋ ʜᴇʀᴇ</a> \n›› ᴏᴡɴᴇʀ: @Leoyagamihere\n›› ʟᴀɴɢᴜᴀɢᴇ: <a href='https://docs.python.org/3/'>Pʏᴛʜᴏɴ 3</a> \n›› ʟɪʙʀᴀʀʏ: <a href='https://docs.pyrogram.org/'>Pʏʀᴏɢʀᴀᴍ ᴠ2</a> \n›› ᴅᴀᴛᴀʙᴀsᴇ: <a href='https://www.mongodb.com/docs/'>Mᴏɴɢᴏ ᴅʙ</a> \n›› ᴅᴇᴠᴇʟᴏᴘᴇʀ: @Leoyagamihere</b></blockquote>",
     "REPLY": "<b>For More Join - @yagamiuniversse</b>",
     "SHORT_MSG": "<b>📊 ʜᴇʏ {first}, \n\n‼️ ɢᴇᴛ ᴀʟʟ ꜰɪʟᴇꜱ ɪɴ ᴀ ꜱɪɴɢʟᴇ ʟɪɴᴋ ‼️\n\n ⌯ ʏᴏᴜʀ ʟɪɴᴋ ɪꜱ ʀᴇᴀᴅʏ, ᴋɪɴᴅʟʏ ᴄʟɪᴄᴋ ᴏɴ ᴏᴘᴇɴ ʟɪɴᴋ ʙᴜᴛᴛᴏɴ..</b>",
-    "START_PHOTO": "",
-    "FSUB_PHOTO": "",
-    "SHORT_PIC": "https://telegra.ph/file/7a16ef7abae23bd238c82-b8fbdcb05422d71974.jpg",
-    "SHORT": "https://telegra.ph/file/8aaf4df8c138c6685dcee-05d3b183d4978ec347.jpg"
+    "START_PHOTO": "https://i.ibb.co/Y769JWL1/photo-2025-12-17-09-31-45-7584757509949227048.jpg",
+    "FSUB_PHOTO": "https://i.ibb.co/LhX80sRn/photo-2025-12-17-09-30-13-7584757509949227064.jpg",
+    "SHORT_PIC": "https://i.ibb.co/mFvVYnrR/photo-2025-12-17-09-30-06-7584757509949227052.jpg",
+    "SHORT": "https://i.ibb.co/Y769JWL1/photo-2025-12-17-09-31-45-7584757509949227048.jpg"
 }
 
 def LOGGER(name: str, client_name: str) -> logging.Logger:
