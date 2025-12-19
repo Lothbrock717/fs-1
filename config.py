@@ -31,9 +31,9 @@ DB_CHANNEL =-1003612391100   # just put channel id dont add ""
 #     "-1001234567890": {"name": "Secondary DB", "is_primary": False, "is_active": True}
 # }
 # Auto Delete Timer (seconds)
-AUTO_DEL = 300
+AUTO_DEL = 1800
 # Admin IDs
-ADMINS = [8372956796]
+ADMINS = [6121610691]
 # Bot Settings
 DISABLE_BTN = True
 PROTECT = False
@@ -45,7 +45,7 @@ MESSAGES = {
     "ABOUT": "<b>›› ғᴏʀ ᴍᴏʀᴇ: @yagamiuniversse \n <blockquote expandable>›› ᴜᴘᴅᴀᴛᴇs ᴄʜᴀɴɴᴇʟ: <a href='https://t.me/yagamiuniversse'>Cʟɪᴄᴋ ʜᴇʀᴇ</a> \n›› ᴏᴡɴᴇʀ: @Leoyagamihere\n›› ʟᴀɴɢᴜᴀɢᴇ: <a href='https://docs.python.org/3/'>Pʏᴛʜᴏɴ 3</a> \n›› ʟɪʙʀᴀʀʏ: <a href='https://docs.pyrogram.org/'>Pʏʀᴏɢʀᴀᴍ ᴠ2</a> \n›› ᴅᴀᴛᴀʙᴀsᴇ: <a href='https://www.mongodb.com/docs/'>Mᴏɴɢᴏ ᴅʙ</a> \n›› ᴅᴇᴠᴇʟᴏᴘᴇʀ: @Leoyagamihere</b></blockquote>",
     "REPLY": "<b>For More Join - @yagamiuniversse</b>",
     "SHORT_MSG": "<b>📊 ʜᴇʏ {first}, \n\n‼️ ɢᴇᴛ ᴀʟʟ ꜰɪʟᴇꜱ ɪɴ ᴀ ꜱɪɴɢʟᴇ ʟɪɴᴋ ‼️\n\n ⌯ ʏᴏᴜʀ ʟɪɴᴋ ɪꜱ ʀᴇᴀᴅʏ, ᴋɪɴᴅʟʏ ᴄʟɪᴄᴋ ᴏɴ ᴏᴘᴇɴ ʟɪɴᴋ ʙᴜᴛᴛᴏɴ..</b>",
-    "START_PHOTO": "https://i.ibb.co/Y769JWL1/photo-2025-12-17-09-31-45-7584757509949227048.jpg",
+    "START_PHOTO": "https://i.ibb.co/HDShbV4v/photo-2025-12-17-09-44-02-7584760452001824820.jpg",
     "FSUB_PHOTO": "https://i.ibb.co/LhX80sRn/photo-2025-12-17-09-30-13-7584757509949227064.jpg",
     "SHORT_PIC": "https://i.ibb.co/mFvVYnrR/photo-2025-12-17-09-30-06-7584757509949227052.jpg",
     "SHORT": "https://i.ibb.co/Y769JWL1/photo-2025-12-17-09-31-45-7584757509949227048.jpg"
