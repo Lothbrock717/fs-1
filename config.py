@@ -8,7 +8,7 @@ OWNER_ID = 8372956796
 
 MSG_EFFECT = 5046509860389126442
 
-SHORT_URL = "linkshortify.com" # shortner url 
+SHORT_URL = "" # shortner url 
 SHORT_API = "" 
 SHORT_TUT = ""
 
@@ -35,7 +35,7 @@ AUTO_DEL = 900
 # Admin IDs
 ADMINS = [6121610691]
 # Bot Settings
-DISABLE_BTN = True
+DISABLE_BTN = False
 PROTECT = False
 
 # Messages Configuration
