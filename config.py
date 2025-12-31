@@ -3,7 +3,7 @@ from logging.handlers import RotatingFileHandler
 
 # Bot Configuration
 LOG_FILE_NAME = "bot.log"
-PORT = '8086'
+PORT = '8080'
 OWNER_ID = 1461359037
 
 MSG_EFFECT = 5159385139981059251
@@ -27,8 +27,8 @@ FSUBS = [[-1003510823697, True, 10]] # Force Subscription Channels [channel_id, 
 DB_CHANNEL =-1002419692267  # just put channel id dont add ""
 # Multiple Database Channels (can be set via bot settings)
 #DB_CHANNELS = {
-     "-1002419692267": {"name": "Primary DB", "is_primary": True, "is_active": True},
-     "-1002419692267": {"name": "Secondary DB", "is_primary": False, "is_active": True}
+#     "-1002419692267": {"name": "Primary DB", "is_primary": True, "is_active": True},
+#     "-1002419692267": {"name": "Secondary DB", "is_primary": False, "is_active": True}
  }
 # Auto Delete Timer (seconds)
 AUTO_DEL = 900
