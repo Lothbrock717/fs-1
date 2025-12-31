@@ -4,7 +4,7 @@ from logging.handlers import RotatingFileHandler
 # Bot Configuration
 LOG_FILE_NAME = "bot.log"
 PORT = '8086'
-OWNER_ID = 8372956796
+OWNER_ID = 1461359037
 
 MSG_EFFECT = 5159385139981059251
 
@@ -14,7 +14,7 @@ SHORT_TUT = ""
 
 # Bot Configuration
 SESSION = "yato"
-TOKEN = "8541847397:AAFGZdK11S5yllSk4DAEH0Rt-5Gl564Icnc"
+TOKEN = "8068264764:AAFJUXGWe1C0N_M26pN1AsG7EnJj9k8NOYo"
 API_ID = "35580735"
 API_HASH = "5ac978532adf9c7d2c0b150fa0f492fb"
 WORKERS = 5
@@ -24,16 +24,16 @@ DB_NAME = "yato"
 
 FSUBS = [[-1003510823697, True, 10]] # Force Subscription Channels [channel_id, request_enabled, timer_in_minutes]
 # Database Channel (Primary)
-DB_CHANNEL =-1003612391100   # just put channel id dont add ""
+DB_CHANNEL =-1002419692267  # just put channel id dont add ""
 # Multiple Database Channels (can be set via bot settings)
-DB_CHANNELS = {
-     "-1003612391100": {"name": "Primary DB", "is_primary": True, "is_active": True},
+#DB_CHANNELS = {
+     "-": {"name": "Primary DB", "is_primary": True, "is_active": True},
      "-1003035630937": {"name": "Secondary DB", "is_primary": False, "is_active": True}
  }
 # Auto Delete Timer (seconds)
 AUTO_DEL = 900
 # Admin IDs
-ADMINS = [6121610691]
+ADMINS = [8372956796]
 # Bot Settings
 DISABLE_BTN = True
 PROTECT = False
