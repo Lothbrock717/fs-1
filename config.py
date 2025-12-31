@@ -24,12 +24,13 @@ DB_NAME = "muthamil"
 
 FSUBS = [[-1003510823697, True, 10]] # Force Subscription Channels [channel_id, request_enabled, timer_in_minutes]
 # Database Channel (Primary)
-DB_CHANNEL =-1002419692267  # just put channel id dont add ""
+DB_CHANNEL = -1002419692267  # just put channel id dont add ""
 # Multiple Database Channels (can be set via bot settings)
 #DB_CHANNELS = {
 #     "-1002419692267": {"name": "Primary DB", "is_primary": True, "is_active": True},
 #     "-1002419692267": {"name": "Secondary DB", "is_primary": False, "is_active": True}
- }
+#}
+
 # Auto Delete Timer (seconds)
 AUTO_DEL = 900
 # Admin IDs
