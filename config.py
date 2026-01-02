@@ -3,8 +3,8 @@ from logging.handlers import RotatingFileHandler
 
 # Bot Configuration
 LOG_FILE_NAME = "bot.log"
-PORT = '8080'
-OWNER_ID = 1461359037
+PORT = '8090'
+OWNER_ID = 8372956796
 
 MSG_EFFECT = 5159385139981059251
 
@@ -14,13 +14,13 @@ SHORT_TUT = ""
 
 # Bot Configuration
 SESSION = "yato"
-TOKEN = "8068264764:AAFJUXGWe1C0N_M26pN1AsG7EnJj9k8NOYo"
+TOKEN = "8541847397:AAFGZdK11S5yllSk4DAEH0Rt-5Gl564Icnc"
 API_ID = "35580735"
 API_HASH = "5ac978532adf9c7d2c0b150fa0f492fb"
 WORKERS = 5
 
 DB_URI = "mongodb+srv://nothingsunfav8_db_user:cZjzhPcqH6dIOMrz@cluster0.xthac8f.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
-DB_NAME = "muthamil"
+DB_NAME = "yato"
 
 FSUBS = [[-1003510823697, True, 10]] # Force Subscription Channels [channel_id, request_enabled, timer_in_minutes]
 # Database Channel (Primary)
@@ -41,7 +41,7 @@ PROTECT = False
 
 # Messages Configuration
 MESSAGES = {
-    "START": "<b>›› ʜᴇʏ!!, {first} ~ <blockquote>I Aᴍ A Pᴇʀᴍᴀɴᴇɴᴛ Fɪʟᴇ Sᴛᴏʀᴇ Bᴏᴛ Aɴᴅ Mᴀɴʏ Aᴍᴀᴢɪɴɢ Aᴅᴠᴀɴᴄᴇ Fᴇᴀᴛᴜʀᴇ Aɴᴅ Usᴇʀs Cᴀɴ Aᴄᴄᴇss Sᴛᴏʀᴇᴅ Mᴇssᴀɢᴇs Bʏ Usɪɴɢ A Sʜᴀʀᴇᴀʙʟᴇ Lɪɴᴋ Gɪᴠᴇɴ Bʏ @ATXanime!!! Tᴏ Kɴᴏᴡ Mᴏʀᴇ Cʟɪᴄᴋ Hᴇʟᴘ Bᴜᴛᴛᴏɴ...</blockquote></b>",
+    "START": "<b>›› ʜᴇʏ!!, {first} ~ <blockquote>I Aᴍ A Pᴇʀᴍᴀɴᴇɴᴛ Fɪʟᴇ Sᴛᴏʀᴇ Bᴏᴛ Aɴᴅ Mᴀɴʏ Aᴍᴀᴢɪɴɢ Aᴅᴠᴀɴᴄᴇ Fᴇᴀᴛᴜʀᴇ Aɴᴅ Usᴇʀs Cᴀɴ Aᴄᴄᴇss Sᴛᴏʀᴇᴅ Mᴇssᴀɢᴇs Bʏ Usɪɴɢ A Sʜᴀʀᴇᴀʙʟᴇ Lɪɴᴋ Gɪᴠᴇɴ Bʏ @yagamiuniversse!!! Tᴏ Kɴᴏᴡ Mᴏʀᴇ Cʟɪᴄᴋ Hᴇʟᴘ Bᴜᴛᴛᴏɴ...</blockquote></b>",
     "FSUB": "<b><blockquote>›› ʜᴇʏ ×</blockquote>\n  ʏᴏᴜʀ ғɪʟᴇ ɪs ʀᴇᴀᴅʏ ‼️ ʟᴏᴏᴋs ʟɪᴋᴇ ʏᴏᴜ ʜᴀᴠᴇɴ'ᴛ sᴜʙsᴄʀɪʙᴇᴅ ᴛᴏ ᴏᴜʀ ᴄʜᴀɴɴᴇʟs ʏᴇᴛ, sᴜʙsᴄʀɪʙᴇ ɴᴏᴡ ᴛᴏ ɢᴇᴛ ʏᴏᴜʀ ғɪʟᴇs</b>",
     "ABOUT": "<b>›› ғᴏʀ ᴍᴏʀᴇ: @yagamiuniversse \n <blockquote expandable>›› ᴜᴘᴅᴀᴛᴇs ᴄʜᴀɴɴᴇʟ: <a href='https://t.me/yagamiuniversse'>Cʟɪᴄᴋ ʜᴇʀᴇ</a> \n›› ᴏᴡɴᴇʀ: @Leoyagamihere\n›› ʟᴀɴɢᴜᴀɢᴇ: <a href='https://docs.python.org/3/'>Pʏᴛʜᴏɴ 3</a> \n›› ʟɪʙʀᴀʀʏ: <a href='https://docs.pyrogram.org/'>Pʏʀᴏɢʀᴀᴍ ᴠ2</a> \n›› ᴅᴀᴛᴀʙᴀsᴇ: <a href='https://www.mongodb.com/docs/'>Mᴏɴɢᴏ ᴅʙ</a> \n›› ᴅᴇᴠᴇʟᴏᴘᴇʀ: @Leoyagamihere</b></blockquote>",
     "REPLY": "<b>For More Join - @yagamiuniversse</b>",
