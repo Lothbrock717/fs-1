@@ -3,7 +3,7 @@ from logging.handlers import RotatingFileHandler
 
 # Bot Configuration
 LOG_FILE_NAME = "bot.log"
-PORT = '8080'
+PORT = '8085'
 OWNER_ID = 8372956796
 
 MSG_EFFECT = 5159385139981059251
