@@ -1,7 +1,6 @@
 #(©) Codeflix_Bots
 import asyncio
 asyncio.set_event_loop(asyncio.new_event_loop())
-from bot import Bot, web_app
 from aiohttp import web
 from plugins import web_server
 
