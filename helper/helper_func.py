@@ -9,6 +9,25 @@ from datetime import datetime, timedelta
 from pyrogram import errors
 
 #===============================================================#
+# Luffy-style encode/decode (plain base64 of raw ID, no multiply)
+#===============================================================#
+
+def str_to_b64(text: str) -> str:
+    """Encode a string to base64 (no padding). Used for link generation."""
+    encoded_bytes = base64.b64encode(text.encode("utf-8"))
+    return encoded_bytes.decode("utf-8").rstrip("=")
+
+def b64_to_str(encoded_text: str) -> str:
+    """Decode a base64 string back to plain text (handles missing padding)."""
+    padding_needed = 4 - (len(encoded_text) % 4)
+    if padding_needed and padding_needed != 4:
+        encoded_text += "=" * padding_needed
+    decoded_bytes = base64.b64decode(encoded_text.encode("utf-8"))
+    return decoded_bytes.decode("utf-8")
+
+#===============================================================#
+# Legacy encode/decode kept for any internal use (NOT used for links anymore)
+#===============================================================#
 
 async def encode(string):
     string_bytes = string.encode("ascii")
@@ -16,14 +35,19 @@ async def encode(string):
     base64_string = (base64_bytes.decode("ascii")).strip("=")
     return base64_string
 
-#===============================================================#
-
 async def decode(base64_string):
-    base64_string = base64_string.strip("=") # links generated before this commit will be having = sign, hence striping them to handle padding errors.
+    base64_string = base64_string.strip("=")
     base64_bytes = (base64_string + "=" * (-len(base64_string) % 4)).encode("ascii")
-    string_bytes = base64.urlsafe_b64decode(base64_bytes) 
+    string_bytes = base64.urlsafe_b64decode(base64_bytes)
     string = string_bytes.decode("ascii")
     return string
+
+#===============================================================#
+
+async def get_messages(client, message_ids):
+    messages = []
+    total_messages = 0
+    while total_messages != len(message_ids):
 
 #===============================================================#
 
