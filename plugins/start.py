@@ -4,7 +4,8 @@ from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
 import humanize
 from config import MSG_EFFECT, OWNER_ID
 from plugins.shortner import get_short
-from helper.helper_func import get_messages, force_sub, decode, batch_auto_del_notification
+from helper.helper_func import force_sub, batch_auto_del_notification
+from helper.helper_func import str_to_b64, b64_to_str
 import asyncio
 
 #===============================================================#
@@ -31,26 +32,25 @@ async def start_command(client: Client, message: Message):
     if len(text) > 7:
         try:
             original_payload = text.split(" ", 1)[1]
-            base64_string = original_payload
-
-            is_short_link = False
-            if base64_string.startswith("yu3elk"):
-                base64_string = base64_string[6:-1]
-                is_short_link = True
-
         except IndexError:
             return await message.reply("Invalid command format.")
 
         # 3. Check premium status
         is_user_pro = await client.mongodb.is_pro(user_id)
-        
+
         # 4. Check if shortner is enabled
         shortner_enabled = getattr(client, 'shortner_enabled', True)
 
-        # 5. If user is not premium AND shortner is enabled, send short URL and return
+        # ── Luffy-style shortner: wrap non-premium users with short link ──────
+        # Short links use prefix "yu3elk" so we know to skip them on second hit
+        is_short_link = original_payload.startswith("yu3elk")
+
         if not is_user_pro and user_id != OWNER_ID and not is_short_link and shortner_enabled:
             try:
-                short_link = get_short(f"https://t.me/{client.username}?start=yu3elk{base64_string}7", client)
+                short_link = get_short(
+                    f"https://t.me/{client.username}?start=yu3elk{original_payload}7",
+                    client
+                )
             except Exception as e:
                 client.LOGGER(__name__, client.name).warning(f"Shortener failed: {e}")
                 return await message.reply("Couldn't generate short link.")
@@ -73,179 +73,121 @@ async def start_command(client: Client, message: Message):
                     ]
                 ])
             )
-            return  # prevent sending actual files
-
-        # 6. Decode and prepare file IDs
-        try:
-            string = await decode(base64_string)
-            argument = string.split("-")
-            ids = []
-            source_channel_id = None
-
-            if len(argument) == 3:
-                # Try to determine source channel from encoded multiplier
-                encoded_start = int(argument[1])
-                encoded_end = int(argument[2])
-                
-                # Try primary channel first
-                primary_multiplier = abs(client.db)
-                start_primary = int(encoded_start / primary_multiplier)
-                end_primary = int(encoded_end / primary_multiplier)
-                
-                # Check if the division results in clean integers (meaning this channel was used for encoding)
-                if encoded_start % primary_multiplier == 0 and encoded_end % primary_multiplier == 0:
-                    source_channel_id = client.db
-                    start = start_primary
-                    end = end_primary
-                    client.LOGGER(__name__, client.name).info(f"Decoded batch from primary channel {source_channel_id}: {start}-{end}")
-                else:
-                    # Try secondary channels
-                    db_channels = getattr(client, 'db_channels', {})
-                    for channel_id_str in db_channels.keys():
-                        channel_id = int(channel_id_str)
-                        channel_multiplier = abs(channel_id)
-                        start_test = int(encoded_start / channel_multiplier)
-                        end_test = int(encoded_end / channel_multiplier)
-                        
-                        if encoded_start % channel_multiplier == 0 and encoded_end % channel_multiplier == 0:
-                            source_channel_id = channel_id
-                            start = start_test
-                            end = end_test
-                            client.LOGGER(__name__, client.name).info(f"Decoded batch from secondary channel {source_channel_id}: {start}-{end}")
-                            break
-                    
-                    # Fallback to primary if no match found
-                    if source_channel_id is None:
-                        source_channel_id = client.db
-                        start = start_primary
-                        end = end_primary
-                
-                ids = range(start, end + 1) if start <= end else list(range(start, end - 1, -1))
-
-            elif len(argument) == 2:
-                # Single message
-                encoded_msg = int(argument[1])
-                
-                # Try primary channel first
-                if hasattr(client, 'db_channel') and client.db_channel:
-                    primary_multiplier = abs(client.db_channel.id)
-                    msg_id_primary = int(encoded_msg / primary_multiplier)
-                    
-                    if encoded_msg % primary_multiplier == 0:
-                        source_channel_id = client.db_channel.id
-                        ids = [msg_id_primary]
-                    else:
-                        # Try secondary channels
-                        db_channels = getattr(client, 'db_channels', {})
-                        for channel_id_str in db_channels.keys():
-                            channel_id = int(channel_id_str)
-                            channel_multiplier = abs(channel_id)
-                            msg_id_test = int(encoded_msg / channel_multiplier)
-                            
-                            if encoded_msg % channel_multiplier == 0:
-                                source_channel_id = channel_id
-                                ids = [msg_id_test]
-                                break
-                        
-                        # Fallback to primary
-                        if source_channel_id is None:
-                            source_channel_id = client.db_channel.id if hasattr(client, 'db_channel') else client.db
-                            ids = [msg_id_primary]
-                else:
-                    # Fallback for legacy compatibility
-                    source_channel_id = client.db
-                    ids = [int(encoded_msg / abs(client.db))]
-
-        except Exception as e:
-            client.LOGGER(__name__, client.name).warning(f"Error decoding base64: {e}")
-            return await message.reply("⚠️ Invalid or expired link.")
-
-        # 7. Get messages from the specific source channel first
-        temp_msg = await message.reply("Wait A Sec..")
-        messages = []
-
-        try:
-            # Try to get messages from the identified source channel first
-            if source_channel_id:
-                client.LOGGER(__name__, client.name).info(f"Trying to get messages from source channel: {source_channel_id}")
-                try:
-                    msgs = await client.get_messages(
-                        chat_id=source_channel_id,
-                        message_ids=list(ids)
-                    )
-                    # Filter out None messages (deleted/not found)
-                    valid_msgs = [msg for msg in msgs if msg is not None]
-                    messages.extend(valid_msgs)
-                    client.LOGGER(__name__, client.name).info(f"Found {len(valid_msgs)} messages from source channel {source_channel_id}")
-                    
-                    # If we didn't get all messages, try the fallback system
-                    if len(valid_msgs) < len(list(ids)):
-                        missing_ids = [mid for mid in ids if mid not in {msg.id for msg in valid_msgs}]
-                        if missing_ids:
-                            client.LOGGER(__name__, client.name).info(f"Missing {len(missing_ids)} messages, trying fallback system")
-                            # Use the fallback system for missing messages
-                            additional_messages = await get_messages(client, missing_ids)
-                            messages.extend(additional_messages)
-                            client.LOGGER(__name__, client.name).info(f"Found {len(additional_messages)} additional messages from fallback")
-                except Exception as e:
-                    client.LOGGER(__name__, client.name).warning(f"Error getting messages from source channel {source_channel_id}: {e}")
-                    # Fallback to the multi-channel system
-                    messages = await get_messages(client, ids)
-            else:
-                client.LOGGER(__name__, client.name).info("No specific source channel identified, using multi-channel fallback")
-                # Use the multi-channel fallback system
-                messages = await get_messages(client, ids)
-        except Exception as e:
-            await temp_msg.edit_text("Something went wrong!")
-            client.LOGGER(__name__, client.name).warning(f"Error getting messages: {e}")
             return
 
-        if not messages:
-            return await temp_msg.edit("Couldn't find the files in the database.")
-        await temp_msg.delete()
+        # Strip the short-link prefix if present before decoding
+        payload = original_payload
+        if is_short_link:
+            payload = payload[6:-1]  # strip "yu3elk" prefix and trailing "7"
 
-        yugen_msgs = []
-        for msg in messages:
-            caption = (
-                client.messages.get('CAPTION', '').format(
-                    previouscaption=msg.caption.html if msg.caption else msg.document.file_name
-                ) if bool(client.messages.get('CAPTION', '')) and bool(msg.document)
-                else ("" if not msg.caption else msg.caption.html)
-            )
-            reply_markup = msg.reply_markup if not client.disable_btn else None
+        # ── Decode Luffy-style links ──────────────────────────────────────────
 
+        # batch link: start=batch-<b64 of space-separated IDs>
+        if payload.startswith("batch-"):
+            _, files_id = payload.split("-", 1)
             try:
-                copied_msg = await msg.copy(
-                    chat_id=message.from_user.id,
-                    caption=caption,
-                    reply_markup=reply_markup,
-                    protect_content=client.protect
-                )
-                yugen_msgs.append(copied_msg)
-            except FloodWait as e:
-                await asyncio.sleep(e.x)
-                copied_msg = await msg.copy(
-                    chat_id=message.from_user.id,
-                    caption=caption,
-                    reply_markup=reply_markup,
-                    protect_content=client.protect
-                )
-                yugen_msgs.append(copied_msg)
+                decoded = b64_to_str(files_id)
+                if " " in decoded:
+                    msg_ids = [int(x) for x in decoded.split()]
+                elif "-" in decoded:
+                    parts = decoded.split("-")
+                    start_id, end_id = int(parts[0]), int(parts[1])
+                    msg_ids = list(range(start_id, end_id + 1))
+                else:
+                    msg_ids = [int(decoded)]
             except Exception as e:
-                client.LOGGER(__name__, client.name).warning(f"Failed to send message: {e}")
-                pass
+                client.LOGGER(__name__, client.name).warning(f"Batch decode error: {e}")
+                return await message.reply("⚠️ Invalid or expired batch link.")
+
+            temp_msg = await message.reply("Wait A Sec..")
+            yugen_msgs = []
+            for msg_id in msg_ids:
+                try:
+                    db_msg = await client.get_messages(chat_id=client.db, message_ids=msg_id)
+                    if db_msg and not db_msg.empty:
+                        caption = (
+                            "" if not db_msg.caption else db_msg.caption.html
+                        )
+                        reply_markup = db_msg.reply_markup if not client.disable_btn else None
+                        copied = await db_msg.copy(
+                            chat_id=message.from_user.id,
+                            caption=caption,
+                            reply_markup=reply_markup,
+                            protect_content=client.protect
+                        )
+                        yugen_msgs.append(copied)
+                except FloodWait as e:
+                    await asyncio.sleep(e.value)
+                except Exception as e:
+                    client.LOGGER(__name__, client.name).warning(f"Failed to send batch file {msg_id}: {e}")
+
+            await temp_msg.delete()
+            if not yugen_msgs:
+                return await message.reply("Couldn't find the files in the database.")
+
+        # F2Botz_ single-file link (admin-saved private files)
+        elif payload.startswith("F2Botz_"):
+            encoded = payload[7:]
+            try:
+                file_id = int(b64_to_str(encoded))
+            except Exception as e:
+                client.LOGGER(__name__, client.name).warning(f"F2Botz decode error: {e}")
+                return await message.reply("⚠️ Invalid or expired link.")
+
+            temp_msg = await message.reply("Wait A Sec..")
+            try:
+                db_msg = await client.get_messages(chat_id=client.db, message_ids=file_id)
+                if db_msg and not db_msg.empty:
+                    # Handle the case where the DB message is a text listing multiple IDs
+                    if db_msg.text:
+                        message_ids = db_msg.text.split()
+                        await temp_msg.edit_text(f"**Total Files:** `{len(message_ids)}`")
+                        yugen_msgs = []
+                        for mid in message_ids:
+                            try:
+                                sub_msg = await client.get_messages(chat_id=client.db, message_ids=int(mid))
+                                caption = "" if not sub_msg.caption else sub_msg.caption.html
+                                reply_markup = sub_msg.reply_markup if not client.disable_btn else None
+                                copied = await sub_msg.copy(
+                                    chat_id=message.from_user.id,
+                                    caption=caption,
+                                    reply_markup=reply_markup,
+                                    protect_content=client.protect
+                                )
+                                yugen_msgs.append(copied)
+                            except FloodWait as e:
+                                await asyncio.sleep(e.value)
+                            except Exception as e:
+                                client.LOGGER(__name__, client.name).warning(f"Failed to send file {mid}: {e}")
+                    else:
+                        caption = "" if not db_msg.caption else db_msg.caption.html
+                        reply_markup = db_msg.reply_markup if not client.disable_btn else None
+                        copied_msg = await db_msg.copy(
+                            chat_id=message.from_user.id,
+                            caption=caption,
+                            reply_markup=reply_markup,
+                            protect_content=client.protect
+                        )
+                        yugen_msgs = [copied_msg]
+                        await temp_msg.delete()
+                else:
+                    await temp_msg.delete()
+                    return await message.reply("Couldn't find the file in the database.")
+            except Exception as e:
+                await temp_msg.edit_text("Something went wrong!")
+                client.LOGGER(__name__, client.name).warning(f"Error getting file {file_id}: {e}")
+                return
+
+        else:
+            return await message.reply("⚠️ Invalid or expired link.")
 
         # 8. Auto delete timer
-        if messages and client.auto_del > 0:
-            # Create transfer link for getting files again (original base64_string)
-            transfer_link = original_payload
-            
-            # Start batch auto delete notification - single notification for all files
+        if yugen_msgs and client.auto_del > 0:
             asyncio.create_task(batch_auto_del_notification(
                 bot_username=client.username,
                 messages=yugen_msgs,
                 delay_time=client.auto_del,
-                transfer_link=transfer_link,
+                transfer_link=original_payload,
                 chat_id=message.from_user.id,
                 client=client
             ))
