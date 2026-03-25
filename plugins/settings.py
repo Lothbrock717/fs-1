@@ -8,6 +8,9 @@ import humanize
 
 @Client.on_callback_query(filters.regex("^settings$"))
 async def settings(client, query):
+    if not query.from_user.id in client.admins:
+        return await query.answer('✗ ᴏɴʟʏ ᴀᴅᴍɪɴs ᴄᴀɴ ᴜsᴇ ᴛʜɪs!', show_alert=True)
+    await query.answer()
     # Count active force subscription channels by type
     total_fsub = len(client.fsub_dict)
     request_enabled = sum(1 for data in client.fsub_dict.values() if data[2])
@@ -50,6 +53,9 @@ async def settings(client, query):
 
 @Client.on_callback_query(filters.regex("^settings_page_2$"))
 async def settings_page_2(client, query):
+    if not query.from_user.id in client.admins:
+        return await query.answer('✗ ᴏɴʟʏ ᴀᴅᴍɪɴs ᴄᴀɴ ᴜsᴇ ᴛʜɪs!', show_alert=True)
+    await query.answer()
     # Count active force subscription channels by type
     total_fsub = len(client.fsub_dict)
     request_enabled = sum(1 for data in client.fsub_dict.values() if data[2])
@@ -92,6 +98,9 @@ async def settings_page_2(client, query):
 
 @Client.on_callback_query(filters.regex("^fsub$"))
 async def fsub(client, query):
+    if not query.from_user.id in client.admins:
+        return await query.answer('✗ ᴏɴʟʏ ᴀᴅᴍɪɴs ᴄᴀɴ ᴜsᴇ ᴛʜɪs!', show_alert=True)
+    await query.answer()
     # Create a formatted list of channels with names and IDs
     if client.fsub_dict:
         channel_list = []
@@ -438,6 +447,9 @@ __Use the appropriate button below to add or remove an admin based on your needs
 
 @Client.on_callback_query(filters.regex("^photos$"))
 async def photos(client, query):
+    if not query.from_user.id in client.admins:
+        return await query.answer('✗ ᴏɴʟʏ ᴀᴅᴍɪɴs ᴄᴀɴ ᴜsᴇ ᴛʜɪs!', show_alert=True)
+    await query.answer()
     msg = f"""<blockquote>**Force Subscription Settings:**</blockquote>
 **Start Photo:** `{client.messages.get("START_PHOTO", "None")}`
 **Force Sub Photo:** `{client.messages.get('FSUB_PHOTO', 'None')}`
@@ -469,6 +481,9 @@ __Use the appropriate button below to add or remove any admin based on your need
 
 @Client.on_callback_query(filters.regex("^protect$"))
 async def protect(client, query):
+    if not query.from_user.id in client.admins:
+        return await query.answer('✗ ᴏɴʟʏ ᴀᴅᴍɪɴs ᴄᴀɴ ᴜsᴇ ᴛʜɪs!', show_alert=True)
+    await query.answer()
     client.protect = False if client.protect else True
     return await settings(client, query)
 
@@ -502,6 +517,9 @@ __Enter new integer value of auto delete timer, keep 0 to disable auto delete an
 
 @Client.on_callback_query(filters.regex("^texts$"))
 async def texts(client, query):
+    if not query.from_user.id in client.admins:
+        return await query.answer('✗ ᴏɴʟʏ ᴀᴅᴍɪɴs ᴄᴀɴ ᴜsᴇ ᴛʜɪs!', show_alert=True)
+    await query.answer()
     msg = f"""<blockquote>**Text Configuration:**</blockquote>
 **Start Message:**
 <pre>{client.messages.get('START', 'Empty')}</pre>
