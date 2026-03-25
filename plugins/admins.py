@@ -1,15 +1,16 @@
 from pyrogram import Client, filters
 from pyrogram.types import Message, CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup
 import time
-
 import psutil
 import shutil
 
 #===============================================================#
 
-async def admins(client, query):
-    if not (query.from_user.id==client.owner):
-        return await query.answer('This can only be used by owner.')
+@Client.on_callback_query(filters.regex("^admins$"))
+async def admins(client: Client, query: CallbackQuery):
+    if not (query.from_user.id == client.owner):
+        return await query.answer('This can only be used by the owner.', show_alert=True)
+    await query.answer()
     msg = f"""<blockquote>**Admin Settings:**</blockquote>
 **Admin User IDs:** {", ".join(f"`{a}`" for a in client.admins)}
 
@@ -17,10 +18,9 @@ __Use the appropriate button below to add or remove an admin based on your needs
 """
     reply_markup = InlineKeyboardMarkup([
         [InlineKeyboardButton('ᴀᴅᴅ ᴀᴅᴍɪɴ', 'add_admin'), InlineKeyboardButton('ʀᴇᴍᴏᴠᴇ ᴀᴅᴍɪɴ', 'rm_admin')],
-        [InlineKeyboardButton('◂ ʙᴀᴄᴋ', 'settings')]]
-    )
+        [InlineKeyboardButton('◂ ʙᴀᴄᴋ', 'settings')]
+    ])
     await query.message.edit_text(msg, reply_markup=reply_markup)
-    return
 
 #===============================================================#
 
@@ -28,25 +28,22 @@ __Use the appropriate button below to add or remove an admin based on your needs
 async def usage_cmd(client: Client, message: Message):
     if not message.from_user.id in client.admins:
         return await message.reply("✗ ᴛʜɪs ᴄᴀɴ ᴏɴʟʏ ʙᴇ ᴜsᴇᴅ ʙʏ ᴀᴅᴍɪɴs!")
-    
+
     reply = await message.reply("<blockquote>›› ᴇxᴛʀᴀᴄᴛɪɴɢ ᴜsᴀɢᴇ ᴅᴀᴛᴀ...</blockquote>")
 
-    # Get total users from database
     try:
         total_users_list = await client.mongodb.full_userbase()
         total_users = len(total_users_list)
-    except Exception as e:
+    except Exception:
         total_users = "ᴇʀʀᴏʀ"
 
-    # Bot uptime calculation
-    from datetime import datetime, timedelta
+    from datetime import datetime
     uptime_duration = datetime.now() - getattr(client, 'uptime', datetime.now())
     days = uptime_duration.days
     hours, remainder = divmod(uptime_duration.seconds, 3600)
     minutes, _ = divmod(remainder, 60)
     uptime_str = f"{days}ᴅ {hours}ʜ {minutes}ᴍ"
 
-    # System stats
     total, used, free = shutil.disk_usage("/")
     total_gb = total / (1024**3)
     used_gb = used / (1024**3)
@@ -67,7 +64,6 @@ async def usage_cmd(client: Client, message: Message):
 
     cpu_usage = psutil.cpu_percent(interval=1)
 
-    # Network stats with error handling
     try:
         net_io = psutil.net_io_counters()
         bytes_sent = net_io.bytes_sent / (1024**2)
@@ -79,7 +75,6 @@ async def usage_cmd(client: Client, message: Message):
         network_status = "✗ ɴᴏᴛ ᴀᴠᴀɪʟᴀʙʟᴇ"
         net_section = "<blockquote>›› **sᴛᴀᴛᴜs:** `ɴᴏᴛ ᴀᴠᴀɪʟᴀʙʟᴇ ᴏɴ ᴘʀᴏᴏᴛ`</blockquote>"
 
-    # Bot process usage
     try:
         process = psutil.Process()
         bot_cpu_usage = process.cpu_percent(interval=1)
@@ -90,12 +85,10 @@ async def usage_cmd(client: Client, message: Message):
         bot_memory_usage = 0.0
         bot_status = "✗ ᴇʀʀᴏʀ"
 
-    # Status indicators based on usage levels
     disk_status = "✓ ɴᴏʀᴍᴀʟ" if disk_percent < 80 else "✗ ʜɪɢʜ" if disk_percent < 95 else "✗ ᴄʀɪᴛɪᴄᴀʟ"
     ram_status = "✓ ɴᴏʀᴍᴀʟ" if ram_percent < 80 else "✗ ʜɪɢʜ" if ram_percent < 95 else "✗ ᴄʀɪᴛɪᴄᴀʟ"
     cpu_status = "✓ ɴᴏʀᴍᴀʟ" if cpu_usage < 80 else "✗ ʜɪɢʜ" if cpu_usage < 95 else "✗ ᴄʀɪᴛɪᴄᴀʟ"
 
-    # Final message construction with enhanced UI
     msg = f"""<blockquote>✦ sʏsᴛᴇᴍ ᴜsᴀɢᴇ sᴛᴀᴛs</blockquote>
 
 <blockquote><u>**≡ ʙᴏᴛ sᴛᴀᴛɪsᴛɪᴄs:**</u></blockquote>
@@ -133,6 +126,7 @@ async def usage_cmd(client: Client, message: Message):
 <blockquote>**• ᴜsᴇ ᴛʜɪs ɪɴꜰᴏʀᴍᴀᴛɪᴏɴ ᴛᴏ ᴍᴏɴɪᴛᴏʀ ʏᴏᴜʀ ʙᴏᴛ's ᴘᴇʀꜰᴏʀᴍᴀɴᴄᴇ!**</blockquote>"""
 
     await reply.edit_text(msg)
+
 #===============================================================#
 
 @Client.on_callback_query(filters.regex("^add_admin$"))
@@ -140,19 +134,17 @@ async def add_new_admins(client: Client, query: CallbackQuery):
     await query.answer()
     if not query.from_user.id in client.admins:
         return await client.send_message(query.from_user.id, client.reply_text)
-    ids_msg = await client.ask(query.from_user.id, "Send user ids seperated by a space in the next 60 seconds!\nEg: `838278682 83622928 82789928`", filters=filters.text, timeout=60)
+    ids_msg = await client.ask(query.from_user.id, "Send user ids separated by a space in the next 60 seconds!\nEg: `838278682 83622928 82789928`", filters=filters.text, timeout=60)
     ids = ids_msg.text.split()
-    
     try:
         for identifier in ids:
             if int(identifier) not in client.admins:
                 client.admins.append(int(identifier))
-            
     except Exception as e:
         return await ids_msg.reply(f"Error: {e}")
     await admins(client, query)
     return await ids_msg.reply(f"__{len(ids)} admin {'id' if len(ids)==1 else 'ids'} have been promoted!!__")
-    
+
 #===============================================================#
 
 @Client.on_callback_query(filters.regex("^rm_admin$"))
@@ -160,13 +152,12 @@ async def remove_admins(client: Client, query: CallbackQuery):
     await query.answer()
     if not query.from_user.id in client.admins:
         return await client.send_message(query.from_user.id, client.reply_text)
-    ids_msg = await client.ask(query.from_user.id, "Send user ids seperated by a space in the next 60 seconds!\nEg: `838278682 83622928 82789928`", filters=filters.text, timeout=60)
+    ids_msg = await client.ask(query.from_user.id, "Send user ids separated by a space in the next 60 seconds!\nEg: `838278682 83622928 82789928`", filters=filters.text, timeout=60)
     ids = ids_msg.text.split()
-    
     try:
         for identifier in ids:
             if int(identifier) == client.owner:
-                await client.send_message(query.from_user.id, "Nigga i can never remove the owner from the admin list!!")
+                await client.send_message(query.from_user.id, "Cannot remove the owner from the admin list!")
                 continue
             if int(identifier) in client.admins:
                 client.admins.remove(int(identifier))
@@ -174,5 +165,3 @@ async def remove_admins(client: Client, query: CallbackQuery):
         return await ids_msg.reply(f"Error: {e}")
     await admins(client, query)
     return await ids_msg.reply(f"__{len(ids)} admin {'id' if len(ids)==1 else 'ids'} have been removed!!__")
-    
-
