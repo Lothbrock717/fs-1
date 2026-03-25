@@ -48,13 +48,6 @@ async def get_messages(client, message_ids):
     messages = []
     total_messages = 0
     while total_messages != len(message_ids):
-
-#===============================================================#
-
-async def get_messages(client, message_ids):
-    messages = []
-    total_messages = 0
-    while total_messages != len(message_ids):
         temb_ids = message_ids[total_messages:total_messages+200]
         try:
             # Use new multi-DB channel function
