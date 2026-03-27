@@ -41,10 +41,10 @@ PROTECT = False
 
 # Messages Configuration
 MESSAGES = {
-    "START": "<b>›› ʜᴇʏ!!, {first} ~ <blockquote>I Aᴍ A Pᴇʀᴍᴀɴᴇɴᴛ Fɪʟᴇ Sᴛᴏʀᴇ Bᴏᴛ Aɴᴅ Mᴀɴʏ Aᴍᴀᴢɪɴɢ Aᴅᴠᴀɴᴄᴇ Fᴇᴀᴛᴜʀᴇ Aɴᴅ Usᴇʀs Cᴀɴ Aᴄᴄᴇss Sᴛᴏʀᴇᴅ Mᴇssᴀɢᴇs Bʏ Usɪɴɢ A Sʜᴀʀᴇᴀʙʟᴇ Lɪɴᴋ Gɪᴠᴇɴ Bʏ @yagamiuniversse!!! Tᴏ Kɴᴏᴡ Mᴏʀᴇ Cʟɪᴄᴋ Hᴇʟᴘ Bᴜᴛᴛᴏɴ...</blockquote></b>",
+    "START": "<b>›› ʜᴇʏ!!, {first} ~ <blockquote>I Aᴍ A Pᴇʀᴍᴀɴᴇɴᴛ Fɪʟᴇ Sᴛᴏʀᴇ Bᴏᴛ Aɴᴅ Mᴀɴʏ Aᴍᴀᴢɪɴɢ Aᴅᴠᴀɴᴄᴇ Fᴇᴀᴛᴜʀᴇ Aɴᴅ Usᴇʀs Cᴀɴ Aᴄᴄᴇss Sᴛᴏʀᴇᴅ Mᴇssᴀɢᴇs Bʏ Usɪɴɢ A Sʜᴀʀᴇᴀʙʟᴇ Lɪɴᴋ Gɪᴠᴇɴ Bʏ @F2_Linkz!!! Tᴏ Kɴᴏᴡ Mᴏʀᴇ Cʟɪᴄᴋ Hᴇʟᴘ Bᴜᴛᴛᴏɴ...</blockquote></b>",
     "FSUB": "<b><blockquote>›› ʜᴇʏ ×</blockquote>\n  ʏᴏᴜʀ ғɪʟᴇ ɪs ʀᴇᴀᴅʏ ‼️ ʟᴏᴏᴋs ʟɪᴋᴇ ʏᴏᴜ ʜᴀᴠᴇɴ'ᴛ sᴜʙsᴄʀɪʙᴇᴅ ᴛᴏ ᴏᴜʀ ᴄʜᴀɴɴᴇʟs ʏᴇᴛ, sᴜʙsᴄʀɪʙᴇ ɴᴏᴡ ᴛᴏ ɢᴇᴛ ʏᴏᴜʀ ғɪʟᴇs</b>",
-    "ABOUT": "<b>›› ғᴏʀ ᴍᴏʀᴇ: @yagamiuniversse \n <blockquote expandable>›› ᴜᴘᴅᴀᴛᴇs ᴄʜᴀɴɴᴇʟ: <a href='https://t.me/yagamiuniversse'>Cʟɪᴄᴋ ʜᴇʀᴇ</a> \n›› ᴏᴡɴᴇʀ: @Leoyagamihere\n›› ʟᴀɴɢᴜᴀɢᴇ: <a href='https://docs.python.org/3/'>Pʏᴛʜᴏɴ 3</a> \n›› ʟɪʙʀᴀʀʏ: <a href='https://docs.pyrogram.org/'>Pʏʀᴏɢʀᴀᴍ ᴠ2</a> \n›› ᴅᴀᴛᴀʙᴀsᴇ: <a href='https://www.mongodb.com/docs/'>Mᴏɴɢᴏ ᴅʙ</a> \n›› ᴅᴇᴠᴇʟᴏᴘᴇʀ: @Leoyagamihere</b></blockquote>",
-    "REPLY": "<b>For More Join - @yagamiuniversse</b>",
+    "ABOUT": "<b>›› ғᴏʀ ᴍᴏʀᴇ: @F2_Linkz \n <blockquote expandable>›› ᴜᴘᴅᴀᴛᴇs ᴄʜᴀɴɴᴇʟ: <a href='https://t.me/+r-ez-AY7i3djNmM1'>Cʟɪᴄᴋ ʜᴇʀᴇ</a> \n›› sᴜᴘᴘᴏʀᴛ: <a href='https://t.me/+V7zUi7O_DkEyNGZl'>Cʟɪᴄᴋ ʜᴇʀᴇ</a> \n›› ᴏᴡɴᴇʀ: @F2_Adminn\n›› ʟᴀɴɢᴜᴀɢᴇ: <a href='https://docs.python.org/3/'>Pʏᴛʜᴏɴ 3</a> \n›› ʟɪʙʀᴀʀʏ: <a href='https://docs.pyrogram.org/'>Pʏʀᴏɢʀᴀᴍ ᴠ2</a> \n›› ᴅᴀᴛᴀʙᴀsᴇ: <a href='https://www.mongodb.com/docs/'>Mᴏɴɢᴏ ᴅʙ</a> \n›› ᴅᴇᴠᴇʟᴏᴘᴇʀ: @F2_Adminn</b></blockquote>",
+    "REPLY": "<b>For More Join - @F2_Linkz</b>",
     "SHORT_MSG": "<b>📊 ʜᴇʏ {}, \n\n‼️ ɢᴇᴛ ᴀʟʟ ꜰɪʟᴇꜱ ɪɴ ᴀ ꜱɪɴɢʟᴇ ʟɪɴᴋ ‼️\n\n ⌯ ʏᴏᴜʀ ʟɪɴᴋ ɪꜱ ʀᴇᴀᴅʏ, ᴋɪɴᴅʟʏ ᴄʟɪᴄᴋ ᴏɴ ᴏᴘᴇɴ ʟɪɴᴋ ʙᴜᴛᴛᴏɴ..</b>",
     "START_PHOTO": "https://i.ibb.co/HDShbV4v/photo-2025-12-17-09-44-02-7584760452001824820.jpg",
     "FSUB_PHOTO": "https://i.ibb.co/LhX80sRn/photo-2025-12-17-09-30-13-7584757509949227064.jpg",
