@@ -7,6 +7,49 @@ from plugins.shortner import get_short
 from helper.helper_func import force_sub, batch_auto_del_notification
 from helper.helper_func import str_to_b64, b64_to_str
 import asyncio
+import re
+
+#===============================================================#
+
+def clean_caption(text: str) -> str:
+    """Strip @usernames, t.me links, and http links from caption."""
+    if not text:
+        return ""
+    text = re.sub(r'https?://\S+', '', text)
+    text = re.sub(r't\.me/\S+', '', text)
+    text = re.sub(r'@\w+', '', text)
+    text = re.sub(r'\n{3,}', '\n\n', text)
+    return text.strip()
+
+def build_caption(client, raw_caption: str) -> str:
+    """Build final caption using custom template or prefix, after stripping original links."""
+    cleaned = clean_caption(raw_caption)
+    template = getattr(client, 'file_caption_template', '')
+    if template:
+        return template.replace('{original_caption}', cleaned).replace('{filename}', cleaned)
+    prefix = getattr(client, 'file_prefix', '')
+    if prefix and cleaned:
+        return f"{prefix} - {cleaned}"
+    elif prefix:
+        return prefix
+    return cleaned
+
+def build_file_buttons(client):
+    """Build inline buttons from client.file_buttons list."""
+    custom_buttons = getattr(client, 'file_buttons', [])
+    if not custom_buttons:
+        return None
+    rows = []
+    for row in custom_buttons:
+        btn_row = []
+        for btn in row:
+            try:
+                btn_row.append(InlineKeyboardButton(btn['text'], url=btn['url']))
+            except Exception:
+                pass
+        if btn_row:
+            rows.append(btn_row)
+    return InlineKeyboardMarkup(rows) if rows else None
 
 #===============================================================#
 
@@ -105,10 +148,9 @@ async def start_command(client: Client, message: Message):
                 try:
                     db_msg = await client.get_messages(chat_id=client.db, message_ids=msg_id)
                     if db_msg and not db_msg.empty:
-                        caption = (
-                            "" if not db_msg.caption else db_msg.caption.html
-                        )
-                        reply_markup = db_msg.reply_markup if not client.disable_btn else None
+                        _raw_caption = "" if not db_msg.caption else db_msg.caption.html
+                        caption = build_caption(client, _raw_caption)
+                        reply_markup = build_file_buttons(client) or (db_msg.reply_markup if not client.disable_btn else None)
                         copied = await db_msg.copy(
                             chat_id=message.from_user.id,
                             caption=caption,
@@ -146,8 +188,9 @@ async def start_command(client: Client, message: Message):
                         for mid in message_ids:
                             try:
                                 sub_msg = await client.get_messages(chat_id=client.db, message_ids=int(mid))
-                                caption = "" if not sub_msg.caption else sub_msg.caption.html
-                                reply_markup = sub_msg.reply_markup if not client.disable_btn else None
+                                _raw_caption = "" if not sub_msg.caption else sub_msg.caption.html
+                                caption = build_caption(client, _raw_caption)
+                                reply_markup = build_file_buttons(client) or (sub_msg.reply_markup if not client.disable_btn else None)
                                 copied = await sub_msg.copy(
                                     chat_id=message.from_user.id,
                                     caption=caption,
@@ -160,8 +203,9 @@ async def start_command(client: Client, message: Message):
                             except Exception as e:
                                 client.LOGGER(__name__, client.name).warning(f"Failed to send file {mid}: {e}")
                     else:
-                        caption = "" if not db_msg.caption else db_msg.caption.html
-                        reply_markup = db_msg.reply_markup if not client.disable_btn else None
+                        _raw_caption = "" if not db_msg.caption else db_msg.caption.html
+                        caption = build_caption(client, _raw_caption)
+                        reply_markup = build_file_buttons(client) or (db_msg.reply_markup if not client.disable_btn else None)
                         copied_msg = await db_msg.copy(
                             chat_id=message.from_user.id,
                             caption=caption,
