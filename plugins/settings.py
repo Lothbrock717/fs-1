@@ -194,13 +194,13 @@ __sᴇɴᴅ ᴛʜᴇ ᴄʜᴀɴɴᴇʟ ɪᴅ (ɴᴇɢᴀᴛɪᴠᴇ ɪɴᴛᴇɢ
                 'is_active': True,
                 'added_by': query.from_user.id
             }
-            await client.mongodb.add_db_channel(channel_id, channel_data)
+            await client.mongodb.add_db_channel(channel_id, channel_data, client.bot_id)
             if not hasattr(client, 'db_channels'):
                 client.db_channels = {}
             client.db_channels[str(channel_id)] = channel_data
             if channel_data['is_primary']:
                 client.primary_db_channel = channel_id
-                await client.mongodb.set_primary_db_channel(channel_id)
+                await client.mongodb.set_primary_db_channel(channel_id, client.bot_id)
             await query.message.edit_text(f"""**✓ ᴅᴀᴛᴀʙᴀsᴇ ᴄʜᴀɴɴᴇʟ ᴀᴅᴅᴇᴅ!**
 
 ›› **ᴄʜᴀɴɴᴇʟ:** `{chat.title}`
@@ -246,7 +246,7 @@ async def rm_db_channel(client, query):
             return await query.message.edit_text("**❌ Cannot remove primary channel!**\n\n__Set another channel as primary first.__",
                                                  reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('◂ ʙᴀᴄᴋ', 'db_channels')]]))
         channel_name = db_chs[str(channel_id)].get('name', 'Unknown')
-        await client.mongodb.remove_db_channel(channel_id)
+        await client.mongodb.remove_db_channel(channel_id, client.bot_id)
         del client.db_channels[str(channel_id)]
         await query.message.edit_text(f"**✅ Removed:** `{channel_name}` (`{channel_id}`)",
                                       reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('◂ ʙᴀᴄᴋ', 'db_channels')]]))
@@ -282,7 +282,7 @@ async def set_primary_db(client, query):
         if str(channel_id) not in db_chs:
             return await query.message.edit_text(f"**❌ Channel `{channel_id}` not found!**",
                                                  reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('◂ ʙᴀᴄᴋ', 'db_channels')]]))
-        await client.mongodb.set_primary_db_channel(channel_id)
+        await client.mongodb.set_primary_db_channel(channel_id, client.bot_id)
         for ch_id, ch_data in client.db_channels.items():
             ch_data['is_primary'] = (int(ch_id) == channel_id)
         client.primary_db_channel = channel_id
@@ -322,7 +322,7 @@ async def toggle_db_status(client, query):
         if str(channel_id) not in db_chs:
             return await query.message.edit_text(f"**❌ Channel `{channel_id}` not found!**",
                                                  reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('◂ ʙᴀᴄᴋ', 'db_channels')]]))
-        new_status = await client.mongodb.toggle_db_channel_status(channel_id)
+        new_status = await client.mongodb.toggle_db_channel_status(channel_id, client.bot_id)
         if new_status is not None:
             client.db_channels[str(channel_id)]['is_active'] = new_status
             channel_name = db_chs[str(channel_id)].get('name', 'Unknown')
@@ -536,10 +536,10 @@ __sᴇɴᴅ ʏᴏᴜʀ ᴘʀᴇꜰɪx ᴛᴇxᴛ. sᴇɴᴅ `0` ᴛᴏ ʀᴇᴍ�
         val = res.text.strip()
         if val == '0':
             client.file_prefix = ''
-            await client.mongodb.update_bot_setting('file_prefix', '')
+            await client.mongodb.update_bot_setting('file_prefix', '', client.bot_id)
             return await query.message.edit_text("**✓ ᴘʀᴇꜰɪx ʀᴇᴍᴏᴠᴇᴅ!**", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('‹ ʙᴀᴄᴋ', 'file_prefix')]]))
         client.file_prefix = val
-        await client.mongodb.update_bot_setting('file_prefix', val)
+        await client.mongodb.update_bot_setting('file_prefix', val, client.bot_id)
         return await query.message.edit_text(f"**✓ ᴘʀᴇꜰɪx ᴜᴘᴅᴀᴛᴇᴅ!**\n\n›› `{val}`", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('‹ ʙᴀᴄᴋ', 'file_prefix')]]))
     except ListenerTimeout:
         return await query.message.edit_text("**✗ ᴛɪᴍᴇᴏᴜᴛ!**", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('‹ ʙᴀᴄᴋ', 'file_prefix')]]))
@@ -573,10 +573,10 @@ __sᴇɴᴅ ʏᴏᴜʀ ᴄᴜsᴛᴏᴍ ᴄᴀᴘᴛɪᴏɴ ᴛᴇᴍᴘʟᴀᴛ
         val = res.text.strip()
         if val == '0':
             client.file_caption_template = ''
-            await client.mongodb.update_bot_setting('file_caption_template', '')
+            await client.mongodb.update_bot_setting('file_caption_template', '', client.bot_id)
             return await query.message.edit_text("**✓ ᴛᴇᴍᴘʟᴀᴛᴇ ᴄʟᴇᴀʀᴇᴅ!**", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('‹ ʙᴀᴄᴋ', 'file_prefix')]]))
         client.file_caption_template = val
-        await client.mongodb.update_bot_setting('file_caption_template', val)
+        await client.mongodb.update_bot_setting('file_caption_template', val, client.bot_id)
         return await query.message.edit_text(f"**✓ ᴛᴇᴍᴘʟᴀᴛᴇ ᴜᴘᴅᴀᴛᴇᴅ!**\n\n<pre>{val}</pre>", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('‹ ʙᴀᴄᴋ', 'file_prefix')]]))
     except ListenerTimeout:
         return await query.message.edit_text("**✗ ᴛɪᴍᴇᴏᴜᴛ!**", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('‹ ʙᴀᴄᴋ', 'file_prefix')]]))
@@ -644,7 +644,7 @@ __ᴍᴜʟᴛɪᴘʟᴇ ʙᴜᴛᴛᴏɴs ɪɴ ᴏɴᴇ ʀᴏᴡ — sᴇᴘᴀ�
         if not hasattr(client, 'file_buttons') or client.file_buttons is None:
             client.file_buttons = []
         client.file_buttons.append(row)
-        await client.mongodb.update_bot_setting('file_buttons', client.file_buttons)
+        await client.mongodb.update_bot_setting('file_buttons', client.file_buttons, client.bot_id)
         preview = '\n'.join([' | '.join(f"[{b['text']}]" for b in r) for r in client.file_buttons])
         return await query.message.edit_text(f"**✓ ʙᴜᴛᴛᴏɴ ᴀᴅᴅᴇᴅ!**\n\n**ᴀʟʟ ʙᴜᴛᴛᴏɴs:**\n{preview}", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('‹ ʙᴀᴄᴋ', 'file_buttons_menu')]]))
     except ListenerTimeout:
@@ -657,6 +657,6 @@ async def clear_file_buttons(client, query):
     if not query.from_user.id in client.admins:
         return await query.answer('✗ ᴏɴʟʏ ᴀᴅᴍɪɴs ᴄᴀɴ ᴜsᴇ ᴛʜɪs!', show_alert=True)
     client.file_buttons = []
-    await client.mongodb.update_bot_setting('file_buttons', [])
+    await client.mongodb.update_bot_setting('file_buttons', [], client.bot_id)
     await query.answer('✓ ᴀʟʟ ʙᴜᴛᴛᴏɴs ᴄʟᴇᴀʀᴇᴅ!', show_alert=True)
     await file_buttons_menu(client, query)
