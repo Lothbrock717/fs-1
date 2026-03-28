@@ -12,12 +12,17 @@ import re
 #===============================================================#
 
 def clean_caption(text: str) -> str:
-    """Strip @usernames, t.me links, and http links from caption."""
+    """Strip @usernames, t.me links, http links and leftover dashes from caption."""
     if not text:
         return ""
     text = re.sub(r'https?://\S+', '', text)
     text = re.sub(r't\.me/\S+', '', text)
     text = re.sub(r'@\w+', '', text)
+    # Remove leading/trailing dashes and separators left after stripping
+    text = re.sub(r'^[\s\-–—|]+', '', text)
+    text = re.sub(r'[\s\-–—|]+$', '', text)
+    # Collapse multiple dashes in the middle
+    text = re.sub(r'\s*[-–—]+\s*', ' - ', text)
     text = re.sub(r'\n{3,}', '\n\n', text)
     return text.strip()
 
