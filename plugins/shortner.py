@@ -168,8 +168,8 @@ __<blockquote>**≡ ꜱᴇɴᴅ ɴᴇᴡ ꜱʜᴏʀᴛɴᴇʀ ᴜʀʟ ᴀɴᴅ �
                 client.short_api = new_api
                 
                 # Save to database
-                await client.mongodb.update_shortner_setting('short_url', new_url)
-                await client.mongodb.update_shortner_setting('short_api', new_api)
+                await client.mongodb.update_shortner_setting('short_url', new_url, client.bot_id)
+                await client.mongodb.update_shortner_setting('short_api', new_api, client.bot_id)
                 
                 await query.message.edit_text(f"**✓ ꜱʜᴏʀᴛɴᴇʀ ꜱᴇᴛᴛɪɴɢꜱ ᴜᴘᴅᴀᴛᴇᴅ ꜱᴜᴄᴄᴇꜱꜱꜰᴜʟʟʏ!**\n\n**ɴᴇᴡ ᴜʀʟ:** `{new_url}`\n**ɴᴇᴡ ᴀᴘɪ:** `{new_api[:20]}...`", 
                                             reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('◂ ʙᴀᴄᴋ', 'shortner')]]))
@@ -207,7 +207,7 @@ __ꜱᴇɴᴅ ᴛʜᴇ ɴᴇᴡ ᴛᴜᴛᴏʀɪᴀʟ ʟɪɴᴋ ɪɴ ᴛʜᴇ ɴ
         if new_tutorial and (new_tutorial.startswith('https://') or new_tutorial.startswith('http://')):
             client.tutorial_link = new_tutorial
             # Save to database
-            await client.mongodb.update_shortner_setting('tutorial_link', new_tutorial)
+            await client.mongodb.update_shortner_setting('tutorial_link', new_tutorial, client.bot_id)
             await query.message.edit_text(f"**✓ ᴛᴜᴛᴏʀɪᴀʟ ʟɪɴᴋ ᴜᴘᴅᴀᴛᴇᴅ ꜱᴜᴄᴄᴇꜱꜱꜰᴜʟʟʏ!**", 
                                         reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('◂ ʙᴀᴄᴋ', 'shortner')]]))
         else:
