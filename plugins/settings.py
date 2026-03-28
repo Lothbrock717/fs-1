@@ -15,6 +15,10 @@ async def settings(client, query):
     timer_enabled = sum(1 for data in client.fsub_dict.values() if data[3] > 0)
     total_db_channels = len(getattr(client, 'db_channels', {}))
     primary_db = getattr(client, 'primary_db_channel', client.db)
+    _start_prev = (client.messages.get('START', 'ᴇᴍᴘᴛʏ') or 'ᴇᴍᴘᴛʏ')[:200]
+    _fsub_prev = (client.messages.get('FSUB', 'ᴇᴍᴘᴛʏ') or 'ᴇᴍᴘᴛʏ')[:200]
+    _about_prev = (client.messages.get('ABOUT', 'ᴇᴍᴘᴛʏ') or 'ᴇᴍᴘᴛʏ')[:200]
+    _reply_prev = (client.reply_text or '')[:200]
     msg = f"""<blockquote>✦ sᴇᴛᴛɪɴɢs ᴏғ @{client.username}</blockquote>
 ›› **ꜰꜱᴜʙ ᴄʜᴀɴɴᴇʟs:** `{total_fsub}` (ʀᴇǫᴜᴇsᴛ: {request_enabled}, ᴛɪᴍᴇʀ: {timer_enabled})
 ›› **ᴅʙ ᴄʜᴀɴɴᴇʟs:** `{total_db_channels}` (ᴘʀɪᴍᴀʀʏ: `{primary_db}`)
@@ -27,20 +31,20 @@ async def settings(client, query):
 ›› **sʜᴏʀᴛɴᴇʀ ᴜʀʟ:** `{getattr(client, 'short_url', 'ɴᴏᴛ sᴇᴛ')}`
 ›› **ᴛᴜᴛᴏʀɪᴀʟ ʟɪɴᴋ:** `{getattr(client, 'tutorial_link', 'ɴᴏᴛ sᴇᴛ')}`
 ›› **sᴛᴀʀᴛ ᴍᴇssᴀɢᴇ:**
-<pre>{client.messages.get('START', 'ᴇᴍᴘᴛʏ')}</pre>
+<pre>{_start_prev}</pre>
 ›› **sᴛᴀʀᴛ ɪᴍᴀɢᴇ:** `{bool(client.messages.get('START_PHOTO', ''))}`
 ›› **ꜰᴏʀᴄᴇ sᴜʙ ᴍᴇssᴀɢᴇ:**
-<pre>{client.messages.get('FSUB', 'ᴇᴍᴘᴛʏ')}</pre>
+<pre>{_fsub_prev}</pre>
 ›› **ꜰᴏʀᴄᴇ sᴜʙ ɪᴍᴀɢᴇ:** `{bool(client.messages.get('FSUB_PHOTO', ''))}`
 ›› **ᴀʙᴏᴜᴛ ᴍᴇssᴀɢᴇ:**
-<pre>{client.messages.get('ABOUT', 'ᴇᴍᴘᴛʏ')}</pre>
+<pre>{_about_prev}</pre>
 ›› **ʀᴇᴘʟʏ ᴍᴇssᴀɢᴇ:**
-<pre>{client.reply_text}</pre>
+<pre>{_reply_prev}</pre>
     """
     reply_markup = InlineKeyboardMarkup([
         [InlineKeyboardButton('ꜰꜱᴜʙ ᴄʜᴀɴɴᴇʟꜱ', 'fsub'), InlineKeyboardButton('ᴅʙ ᴄʜᴀɴɴᴇʟꜱ', 'db_channels')],
         [InlineKeyboardButton('ᴀᴅᴍɪɴꜱ', 'admins'), InlineKeyboardButton('ᴀᴜᴛᴏ ᴅᴇʟᴇᴛᴇ', 'auto_del')],
-        [InlineKeyboardButton('ꜰɪʟᴇ ᴘʀᴇꜰɪx', 'file_prefix'), InlineKeyboardButton('ʜᴏᴍᴇ', 'home')],
+        [InlineKeyboardButton('ꜰɪʟᴇ ᴄᴀᴘᴛɪᴏɴ', 'file_prefix'), InlineKeyboardButton('ʜᴏᴍᴇ', 'home')],
         [InlineKeyboardButton('›› ɴᴇxᴛ', 'settings_page_2')]
     ])
     await query.message.edit_text(msg, reply_markup=reply_markup)
@@ -57,6 +61,10 @@ async def settings_page_2(client, query):
     timer_enabled = sum(1 for data in client.fsub_dict.values() if data[3] > 0)
     total_db_channels = len(getattr(client, 'db_channels', {}))
     primary_db = getattr(client, 'primary_db_channel', client.db)
+    _start_prev = (client.messages.get('START', 'ᴇᴍᴘᴛʏ') or 'ᴇᴍᴘᴛʏ')[:200]
+    _fsub_prev = (client.messages.get('FSUB', 'ᴇᴍᴘᴛʏ') or 'ᴇᴍᴘᴛʏ')[:200]
+    _about_prev = (client.messages.get('ABOUT', 'ᴇᴍᴘᴛʏ') or 'ᴇᴍᴘᴛʏ')[:200]
+    _reply_prev = (client.reply_text or '')[:200]
     msg = f"""<blockquote>✦ sᴇᴛᴛɪɴɢs ᴏғ @{client.username}</blockquote>
 ›› **ꜰsᴜʙ ᴄʜᴀɴɴᴇʟs:** `{total_fsub}` (ʀᴇǫᴜᴇsᴛ: {request_enabled}, ᴛɪᴍᴇʀ: {timer_enabled})
 ›› **ᴅʙ ᴄʜᴀɴɴᴇʟs:** `{total_db_channels}` (ᴘʀɪᴍᴀʀʏ: `{primary_db}`)
@@ -69,15 +77,15 @@ async def settings_page_2(client, query):
 ›› **sʜᴏʀᴛɴᴇʀ ᴜʀʟ:** `{getattr(client, 'short_url', 'ɴᴏᴛ sᴇᴛ')}`
 ›› **ᴛᴜᴛᴏʀɪᴀʟ ʟɪɴᴋ:** `{getattr(client, 'tutorial_link', 'ɴᴏᴛ sᴇᴛ')}`
 ›› **sᴛᴀʀᴛ ᴍᴇssᴀɢᴇ:**
-<pre>{client.messages.get('START', 'ᴇᴍᴘᴛʏ')}</pre>
+<pre>{_start_prev}</pre>
 ›› **sᴛᴀʀᴛ ɪᴍᴀɢᴇ:** `{bool(client.messages.get('START_PHOTO', ''))}`
 ›› **ꜰᴏʀᴄᴇ sᴜʙ ᴍᴇssᴀɢᴇ:**
-<pre>{client.messages.get('FSUB', 'ᴇᴍᴘᴛʏ')}</pre>
+<pre>{_fsub_prev}</pre>
 ›› **ꜰᴏʀᴄᴇ sᴜʙ ɪᴍᴀɢᴇ:** `{bool(client.messages.get('FSUB_PHOTO', ''))}`
 ›› **ᴀʙᴏᴜᴛ ᴍᴇssᴀɢᴇ:**
-<pre>{client.messages.get('ABOUT', 'ᴇᴍᴘᴛʏ')}</pre>
+<pre>{_about_prev}</pre>
 ›› **ʀᴇᴘʟʏ ᴍᴇssᴀɢᴇ:**
-<pre>{client.reply_text}</pre>
+<pre>{_reply_prev}</pre>
     """
     reply_markup = InlineKeyboardMarkup([
         [InlineKeyboardButton('ᴘʀᴏᴛᴇᴄᴛ ᴄᴏɴᴛᴇɴᴛ', 'protect'), InlineKeyboardButton('ᴘʜᴏᴛᴏs', 'photos')],
