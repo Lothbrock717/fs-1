@@ -51,7 +51,8 @@ class Bot(Client):
         await super().start()
         usr_bot_me = await self.get_me()
         self.uptime = datetime.now()
-        
+        self.bot_id = usr_bot_me.username  # Unique namespace for this bot in shared DB
+
         # Load fsub channels from static config first
         if len(self.fsub) > 0:
             for channel in self.fsub:
@@ -75,69 +76,59 @@ class Bot(Client):
                     self.LOGGER(__name__, self.name).warning("Bot can't Export Invite link from Force Sub Channel!")
                     self.LOGGER(__name__, self.name).warning("\nBot Stopped.")
                     sys.exit()
-                    
+
         # Load dynamically added fsub channels from database
         try:
-            db_fsub_channels = await self.mongodb.get_fsub_channels()
+            db_fsub_channels = await self.mongodb.get_fsub_channels(self.bot_id)
             for channel_id_str, channel_data in db_fsub_channels.items():
                 channel_id = int(channel_id_str)
-                # Skip if already loaded from static config
                 if channel_id in self.fsub_dict:
                     continue
                 try:
                     chat = await self.get_chat(channel_id)
                     name = chat.title
-                    # Update name in case it changed
                     channel_data[0] = name
                     self.fsub_dict[channel_id] = channel_data
-                    if channel_data[2]:  # if request is True
+                    if channel_data[2]:
                         self.req_channels.append(channel_id)
                 except Exception as e:
                     self.LOGGER(__name__, self.name).warning(f"Could not load dynamic fsub channel {channel_id}: {e}")
-                    # Remove invalid channel from database
-                    await self.mongodb.remove_fsub_channel(channel_id)
+                    await self.mongodb.remove_fsub_channel(channel_id, self.bot_id)
         except Exception as e:
             self.LOGGER(__name__, self.name).warning(f"Error loading dynamic fsub channels: {e}")
-            
+
         await self.mongodb.set_channels(self.req_channels)
-        
+
         # Load DB channels from database
         try:
-            db_channels_data = await self.mongodb.get_db_channels()
+            db_channels_data = await self.mongodb.get_db_channels(self.bot_id)
             self.db_channels = {}
             self.primary_db_channel = self.db
-            
+
             for channel_id_str, channel_data in db_channels_data.items():
                 channel_id = int(channel_id_str)
                 try:
-                    # Verify channel still exists and is accessible
                     chat = await self.get_chat(channel_id)
-                    # Update name in case it changed
                     channel_data['name'] = chat.title
                     self.db_channels[channel_id_str] = channel_data
-                    
-                    # Set primary channel if marked as primary
                     if channel_data.get('is_primary', False):
                         self.primary_db_channel = channel_id
-                        self.db = channel_id  # Update current db reference
-                        
+                        self.db = channel_id
                 except Exception as e:
                     self.LOGGER(__name__, self.name).warning(f"Could not load DB channel {channel_id}: {e}")
-                    # Remove invalid channel from database
-                    await self.mongodb.remove_db_channel(channel_id)
+                    await self.mongodb.remove_db_channel(channel_id, self.bot_id)
         except Exception as e:
             self.LOGGER(__name__, self.name).warning(f"Error loading DB channels: {e}")
-        
+
         # Load shortner settings from database
         try:
-            shortner_settings = await self.mongodb.get_shortner_settings()
+            shortner_settings = await self.mongodb.get_shortner_settings(self.bot_id)
             self.short_url = shortner_settings.get('short_url', SHORT_URL)
             self.short_api = shortner_settings.get('short_api', SHORT_API)
             self.tutorial_link = shortner_settings.get('tutorial_link', SHORT_TUT)
             self.shortner_enabled = shortner_settings.get('enabled', True)
         except Exception as e:
             self.LOGGER(__name__, self.name).warning(f"Error loading shortner settings: {e}")
-            # Set defaults from config if loading fails
             self.short_url = SHORT_URL
             self.short_api = SHORT_API
             self.tutorial_link = SHORT_TUT
@@ -145,9 +136,9 @@ class Bot(Client):
 
         # Load file prefix, caption template and custom buttons from database
         try:
-            self.file_prefix = await self.mongodb.get_bot_setting('file_prefix', '')
-            self.file_caption_template = await self.mongodb.get_bot_setting('file_caption_template', '')
-            self.file_buttons = await self.mongodb.get_bot_setting('file_buttons', [])
+            self.file_prefix = await self.mongodb.get_bot_setting('file_prefix', '', self.bot_id)
+            self.file_caption_template = await self.mongodb.get_bot_setting('file_caption_template', '', self.bot_id)
+            self.file_buttons = await self.mongodb.get_bot_setting('file_buttons', [], self.bot_id)
         except Exception as e:
             self.LOGGER(__name__, self.name).warning(f"Error loading file settings: {e}")
             self.file_prefix = ""
