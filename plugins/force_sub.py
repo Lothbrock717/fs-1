@@ -71,7 +71,7 @@ async def add_fsub(client: Client, query: CallbackQuery):
             await client.mongodb.set_channels(client.req_channels)
         
         # Save to database for persistence across bot restarts
-        await client.mongodb.add_fsub_channel(channel_id, client.fsub_dict[channel_id])
+        await client.mongodb.add_fsub_channel(channel_id, client.fsub_dict[channel_id], client.bot_id)
         
         await fsub(client, query)
         return await ask_channel_info.reply(f"__Channel with name: `{name.strip()}` is added as a force sub channel!!__")
@@ -97,7 +97,7 @@ async def rm_fsub(client: Client, query: CallbackQuery):
         client.fsub_dict.pop(channel_id)
         
         # Remove from database for persistence across bot restarts
-        await client.mongodb.remove_fsub_channel(channel_id)
+        await client.mongodb.remove_fsub_channel(channel_id, client.bot_id)
         
         await fsub(client, query)
         return await ask_channel_info.reply(f"__Channel with id: `{channel_id}` has been removed as a force sub channel!!__")
