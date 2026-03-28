@@ -41,8 +41,11 @@ class Bot(Client):
         self.reply_text = messages.get('REPLY', 'Do not send any useless message in the bot.')
         self.mongodb = MongoDB(db_uri, db_name)
         self.req_channels = []
-        self.db_channels = {}  # Initialize DB channels dictionary
-        self.primary_db_channel = db  # Set initial primary DB channel
+        self.db_channels = {}
+        self.primary_db_channel = db
+        self.file_prefix = ""
+        self.file_caption_template = ""
+        self.file_buttons = []
     
     async def start(self):
         await super().start()
@@ -139,6 +142,17 @@ class Bot(Client):
             self.short_api = SHORT_API
             self.tutorial_link = SHORT_TUT
             self.shortner_enabled = True
+
+        # Load file prefix, caption template and custom buttons from database
+        try:
+            self.file_prefix = await self.mongodb.get_bot_setting('file_prefix', '')
+            self.file_caption_template = await self.mongodb.get_bot_setting('file_caption_template', '')
+            self.file_buttons = await self.mongodb.get_bot_setting('file_buttons', [])
+        except Exception as e:
+            self.LOGGER(__name__, self.name).warning(f"Error loading file settings: {e}")
+            self.file_prefix = ""
+            self.file_caption_template = ""
+            self.file_buttons = []
         
         try:
             db_channel = await self.get_chat(self.db)
