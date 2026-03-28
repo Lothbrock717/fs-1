@@ -196,7 +196,7 @@ async def quick_add_db(client: Client, message: Message):
             'added_by': message.from_user.id
         }
         
-        await client.mongodb.add_db_channel(channel_id, channel_data)
+        await client.mongodb.add_db_channel(channel_id, channel_data, client.bot_id)
         
         # Update client attributes
         if not hasattr(client, 'db_channels'):
@@ -270,7 +270,7 @@ async def quick_remove_db(client: Client, message: Message):
     
     # Remove from database and client
     channel_name = db_channels[str(channel_id)].get('name', 'ᴜɴᴋɴᴏᴡɴ')
-    await client.mongodb.remove_db_channel(channel_id)
+    await client.mongodb.remove_db_channel(channel_id, client.bot_id)
     del client.db_channels[str(channel_id)]
     
     await message.reply(f"""**✓ ᴅᴀᴛᴀʙᴀsᴇ ᴄʜᴀɴɴᴇʟ ʀᴇᴍᴏᴠᴇᴅ sᴜᴄᴄᴇssғᴜʟʟʏ!**
