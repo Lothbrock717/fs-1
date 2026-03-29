@@ -76,12 +76,16 @@ async def start_command(client: Client, message: Message):
     if is_banned:
         return await message.reply("**You have been banned from using this bot!**")
 
-    text = message.text
-    if len(text) > 7:
-        try:
-            original_payload = text.split(" ", 1)[1]
-        except IndexError:
-            return await message.reply("Invalid command format.")
+    text = message.text or ""
+    # Extract payload — handle /start, /start@BotUsername, /start payload formats
+    payload_parts = text.strip().split(None, 1)
+    raw_payload = payload_parts[1].strip() if len(payload_parts) > 1 else ""
+    # Strip @BotUsername from command if present (e.g. /start@MyBot payload)
+    if raw_payload.startswith("@"):
+        raw_payload = raw_payload.split(None, 1)[1].strip() if " " in raw_payload else ""
+
+    if raw_payload:
+        original_payload = raw_payload
 
         # 3. Check premium status
         is_user_pro = await client.mongodb.is_pro(user_id)
