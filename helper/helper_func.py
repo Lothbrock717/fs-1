@@ -463,6 +463,12 @@ async def auto_del_notification(bot_username, msg, delay_time, transfer):
 
     try: await msg.delete()
     except Exception as e: print(f"Error occurred on auto_del_notification() : {e}")
+    # Auto delete the notification after 24 hours
+    try:
+        await asyncio.sleep(86400)
+        await temp.delete()
+    except Exception:
+        pass
 
 #Function for deleteing files/Messages.....
 async def delete_message(msg, delay_time): 
@@ -515,3 +521,9 @@ async def batch_auto_del_notification(bot_username, messages, delay_time, transf
             await notification_msg.edit_text(f"<b>Pʀᴇᴠɪᴏᴜs Mᴇssᴀɢᴇ ᴡᴀs Dᴇʟᴇᴛᴇᴅ</b>")
     except Exception as e:
         print(f"Error updating notification message: {e}")
+    # Auto delete the notification message after 24 hours
+    try:
+        await asyncio.sleep(86400)
+        await notification_msg.delete()
+    except Exception:
+        pass
