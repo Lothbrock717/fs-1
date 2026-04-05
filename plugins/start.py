@@ -12,7 +12,7 @@ import re
 #===============================================================#
 
 def clean_caption(text: str) -> str:
-    """Strip links, HTML tags and leftover dashes from caption. Keep filename clean."""
+    """Strip links, HTML tags, promotional lines and leftover dashes from caption."""
     if not text:
         return ""
     # Remove HTML tags
@@ -23,10 +23,15 @@ def clean_caption(text: str) -> str:
     text = re.sub(r't\.me/\S+', '', text)
     # Remove @usernames
     text = re.sub(r'@\w+', '', text)
-    # Remove FOR MORE and similar promotional lines
-    text = re.sub(r'(?i)for more.*', '', text)
-    text = re.sub(r'(?i)•\s*file name\s*:', '', text)
-    # Remove leading/trailing dashes and separators left after stripping
+    # Remove FOR MORE lines and everything after (promotional content)
+    text = re.sub(r'(?i)\bfor more\b.*', '', text, flags=re.DOTALL)
+    # Remove ~ lines (channel promotions)
+    text = re.sub(r'~.*', '', text)
+    # Remove "• File name :" prefix
+    text = re.sub(r'(?i)•?\s*file\s*name\s*[:\-]?\s*', '', text)
+    # Remove Join lines
+    text = re.sub(r'(?i)join.*', '', text)
+    # Remove leading/trailing dashes and separators
     text = re.sub(r'^[\s\-–—|•:]+', '', text)
     text = re.sub(r'[\s\-–—|]+$', '', text)
     # Collapse multiple spaces/newlines
