@@ -18,6 +18,10 @@ async def _process_pending_files(client: Client):
     _collect_task = None
 
     for message in files:
+        # Skip plain text messages - only generate links for media
+        if not (message.photo or message.video or message.document or message.audio or message.voice or message.animation or message.sticker or message.video_note):
+            continue
+
         try:
             post_message = await message.copy(chat_id=client.db, disable_notification=True)
         except FloodWait as e:
@@ -44,7 +48,7 @@ async def _process_pending_files(client: Client):
             f"Here is the Permanent Link of your file:\n<code>{link}</code>",
             reply_markup=reply_markup,
             disable_web_page_preview=True,
-            quote=True
+            quote=False
         )
 
         if not client.disable_btn:
@@ -88,8 +92,3 @@ async def new_post(client: Client, message: Message):
     except Exception as e:
         print(e)
         pass
-
-
-
-
-
