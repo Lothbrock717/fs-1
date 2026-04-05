@@ -12,18 +12,26 @@ import re
 #===============================================================#
 
 def clean_caption(text: str) -> str:
-    """Strip @usernames, t.me links, http links and leftover dashes from caption."""
+    """Strip links, HTML tags and leftover dashes from caption. Keep filename clean."""
     if not text:
         return ""
+    # Remove HTML tags
+    text = re.sub(r'<[^>]+>', '', text)
+    # Remove http/https links
     text = re.sub(r'https?://\S+', '', text)
+    # Remove t.me links
     text = re.sub(r't\.me/\S+', '', text)
+    # Remove @usernames
     text = re.sub(r'@\w+', '', text)
+    # Remove FOR MORE and similar promotional lines
+    text = re.sub(r'(?i)for more.*', '', text)
+    text = re.sub(r'(?i)•\s*file name\s*:', '', text)
     # Remove leading/trailing dashes and separators left after stripping
-    text = re.sub(r'^[\s\-–—|]+', '', text)
+    text = re.sub(r'^[\s\-–—|•:]+', '', text)
     text = re.sub(r'[\s\-–—|]+$', '', text)
-    # Collapse multiple dashes in the middle
-    text = re.sub(r'\s*[-–—]+\s*', ' - ', text)
-    text = re.sub(r'\n{3,}', '\n\n', text)
+    # Collapse multiple spaces/newlines
+    text = re.sub(r'\n{2,}', '\n', text)
+    text = re.sub(r' {2,}', ' ', text)
     return text.strip()
 
 def build_caption(client, raw_caption: str) -> str:
@@ -162,7 +170,7 @@ async def start_command(client: Client, message: Message):
                 try:
                     db_msg = await client.get_messages(chat_id=client.db, message_ids=msg_id)
                     if db_msg and not db_msg.empty:
-                        _raw_caption = "" if not db_msg.caption else db_msg.caption.html
+                        _raw_caption = "" if not db_msg.caption else db_msg.caption.text
                         caption = build_caption(client, _raw_caption)
                         reply_markup = build_file_buttons(client) or (db_msg.reply_markup if not client.disable_btn else None)
                         copied = await db_msg.copy(
@@ -202,7 +210,7 @@ async def start_command(client: Client, message: Message):
                         for mid in message_ids:
                             try:
                                 sub_msg = await client.get_messages(chat_id=client.db, message_ids=int(mid))
-                                _raw_caption = "" if not sub_msg.caption else sub_msg.caption.html
+                                _raw_caption = "" if not sub_msg.caption else sub_msg.caption.text
                                 caption = build_caption(client, _raw_caption)
                                 reply_markup = build_file_buttons(client) or (sub_msg.reply_markup if not client.disable_btn else None)
                                 copied = await sub_msg.copy(
@@ -217,7 +225,7 @@ async def start_command(client: Client, message: Message):
                             except Exception as e:
                                 client.LOGGER(__name__, client.name).warning(f"Failed to send file {mid}: {e}")
                     else:
-                        _raw_caption = "" if not db_msg.caption else db_msg.caption.html
+                        _raw_caption = "" if not db_msg.caption else db_msg.caption.text
                         caption = build_caption(client, _raw_caption)
                         reply_markup = build_file_buttons(client) or (db_msg.reply_markup if not client.disable_btn else None)
                         copied_msg = await db_msg.copy(
