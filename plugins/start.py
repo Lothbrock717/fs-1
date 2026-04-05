@@ -23,10 +23,12 @@ def clean_caption(text: str) -> str:
     text = re.sub(r't\.me/\S+', '', text)
     # Remove @usernames
     text = re.sub(r'@\w+', '', text)
-    # Remove FOR MORE lines and everything after (promotional content)
+    # Remove FOR MORE lines (including unicode bold/italic variants) and everything after
     text = re.sub(r'(?i)\bfor more\b.*', '', text, flags=re.DOTALL)
-    # Remove ~ lines (channel promotions)
-    text = re.sub(r'~.*', '', text)
+    # Remove unicode styled "FOR MORE" (𝙁𝙊𝙍 𝙈𝙊𝙍𝙀) - match by unicode range
+    text = re.sub(r'[\U0001D400-\U0001D7FF\U0001D600-\U0001D9FF]+\s*[:\-]?.*', '', text, flags=re.DOTALL)
+    # Remove ~ lines (channel promotions like ~ Yagami Universe)
+    text = re.sub(r'~.*', '', text, flags=re.DOTALL)
     # Remove "• File name :" prefix
     text = re.sub(r'(?i)•?\s*file\s*name\s*[:\-]?\s*', '', text)
     # Remove Join lines
