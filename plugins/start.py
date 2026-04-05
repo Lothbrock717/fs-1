@@ -170,7 +170,7 @@ async def start_command(client: Client, message: Message):
                 try:
                     db_msg = await client.get_messages(chat_id=client.db, message_ids=msg_id)
                     if db_msg and not db_msg.empty:
-                        _raw_caption = "" if not db_msg.caption else db_msg.caption.text
+                        _raw_caption = "" if not db_msg.caption else db_msg.caption.html
                         caption = build_caption(client, _raw_caption)
                         reply_markup = build_file_buttons(client) or (db_msg.reply_markup if not client.disable_btn else None)
                         copied = await db_msg.copy(
@@ -187,7 +187,7 @@ async def start_command(client: Client, message: Message):
 
             await temp_msg.delete()
             if not yugen_msgs:
-                return await message.reply("Couldn't find the files in the database.")
+                return await message.reply(f"Couldn't find the files in the database.\nDB: `{client.db}`")
 
         # F2Botz_ single-file link (admin-saved private files)
         elif payload.startswith("F2Botz_"):
@@ -210,7 +210,7 @@ async def start_command(client: Client, message: Message):
                         for mid in message_ids:
                             try:
                                 sub_msg = await client.get_messages(chat_id=client.db, message_ids=int(mid))
-                                _raw_caption = "" if not sub_msg.caption else sub_msg.caption.text
+                                _raw_caption = "" if not sub_msg.caption else sub_msg.caption.html
                                 caption = build_caption(client, _raw_caption)
                                 reply_markup = build_file_buttons(client) or (sub_msg.reply_markup if not client.disable_btn else None)
                                 copied = await sub_msg.copy(
@@ -225,7 +225,7 @@ async def start_command(client: Client, message: Message):
                             except Exception as e:
                                 client.LOGGER(__name__, client.name).warning(f"Failed to send file {mid}: {e}")
                     else:
-                        _raw_caption = "" if not db_msg.caption else db_msg.caption.text
+                        _raw_caption = "" if not db_msg.caption else db_msg.caption.html
                         caption = build_caption(client, _raw_caption)
                         reply_markup = build_file_buttons(client) or (db_msg.reply_markup if not client.disable_btn else None)
                         copied_msg = await db_msg.copy(
@@ -240,7 +240,7 @@ async def start_command(client: Client, message: Message):
                     await temp_msg.delete()
                     return await message.reply("Couldn't find the file in the database.")
             except Exception as e:
-                await temp_msg.edit_text("Something went wrong!")
+                await temp_msg.edit_text(f"Something went wrong!\n`{e}`")
                 client.LOGGER(__name__, client.name).warning(f"Error getting file {file_id}: {e}")
                 return
 
