@@ -17,7 +17,7 @@ SESSION = ""
 TOKEN = ""
 API_ID = "26444821"
 API_HASH = "a58efd1d6483e3f0d5b2757d9f665c24"
-WORKERS = 5
+WORKERS = 10
 
 DB_URI = "mongodb+srv://abhay:store@store.nmvpb5w.mongodb.net/?retryWrites=true&w=majority&appName=STORE"
 DB_NAME = "yato"
