@@ -411,6 +411,7 @@ async def rm_start_photo(client, query):
     if not query.from_user.id in client.admins:
         return await query.answer('✗ ᴏɴʟʏ ᴀᴅᴍɪɴs ᴄᴀɴ ᴜsᴇ ᴛʜɪs!', show_alert=True)
     client.messages['START_PHOTO'] = ''
+    await client.mongodb.update_message_setting('START_PHOTO', '', client.bot_id)
     await query.answer()
     await photos(client, query)
 
@@ -421,6 +422,7 @@ async def rm_fsub_photo(client, query):
     if not query.from_user.id in client.admins:
         return await query.answer('✗ ᴏɴʟʏ ᴀᴅᴍɪɴs ᴄᴀɴ ᴜsᴇ ᴛʜɪs!', show_alert=True)
     client.messages['FSUB_PHOTO'] = ''
+    await client.mongodb.update_message_setting('FSUB_PHOTO', '', client.bot_id)
     await query.answer()
     await photos(client, query)
 
@@ -441,11 +443,13 @@ __Send the new image or a URL (must start with https://), or wait 60s to cancel!
         res = await client.listen(user_id=query.from_user.id, filters=(filters.text | filters.photo), timeout=60)
         if res.text and (res.text.startswith('https://') or res.text.startswith('http://')):
             client.messages['START_PHOTO'] = res.text
+            await client.mongodb.update_message_setting('START_PHOTO', res.text, client.bot_id)
             return await query.message.edit_text("**✅ Start photo link updated!**",
                                                  reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('◂ ʙᴀᴄᴋ', 'photos')]]))
         elif res.photo:
             loc = await res.download()
             client.messages['START_PHOTO'] = loc
+            await client.mongodb.update_message_setting('START_PHOTO', loc, client.bot_id)
             return await query.message.edit_text("**✅ Start photo updated!**",
                                                  reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('◂ ʙᴀᴄᴋ', 'photos')]]))
         else:
@@ -472,11 +476,13 @@ __Send the new image or a URL (must start with https://), or wait 60s to cancel!
         res = await client.listen(user_id=query.from_user.id, filters=(filters.text | filters.photo), timeout=60)
         if res.text and (res.text.startswith('https://') or res.text.startswith('http://')):
             client.messages['FSUB_PHOTO'] = res.text
+            await client.mongodb.update_message_setting('FSUB_PHOTO', res.text, client.bot_id)
             return await query.message.edit_text("**✅ FSub photo link updated!**",
                                                  reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('◂ ʙᴀᴄᴋ', 'photos')]]))
         elif res.photo:
             loc = await res.download()
             client.messages['FSUB_PHOTO'] = loc
+            await client.mongodb.update_message_setting('FSUB_PHOTO', loc, client.bot_id)
             return await query.message.edit_text("**✅ FSub photo updated!**",
                                                  reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('◂ ʙᴀᴄᴋ', 'photos')]]))
         else:
