@@ -144,6 +144,17 @@ class Bot(Client):
             self.file_prefix = ""
             self.file_caption_template = ""
             self.file_buttons = []
+
+        # Load messages settings from database (overrides config on restart)
+        # Each bot uses its own bot_id namespace so multiple bots share same DB safely
+        try:
+            db_messages = await self.mongodb.get_messages_settings(self.bot_id)
+            if db_messages:
+                self.messages.update(db_messages)
+                self.reply_text = self.messages.get('REPLY', self.reply_text)
+            self.LOGGER(__name__, self.name).info(f"Messages settings loaded from DB for bot: {self.bot_id}")
+        except Exception as e:
+            self.LOGGER(__name__, self.name).warning(f"Error loading messages settings: {e}")
         
         try:
             db_channel = await self.get_chat(self.db)
