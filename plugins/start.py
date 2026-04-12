@@ -1,5 +1,6 @@
 from helper.helper_func import *
 from pyrogram import Client, filters
+from pyrogram.enums import ParseMode
 from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
 import humanize
 from config import MSG_EFFECT, OWNER_ID
@@ -97,7 +98,7 @@ async def start_command(client: Client, message: Message):
                     f"#NEW_USER:\n\n"
                     f"New User {mention} started @{client.username} !!"
                 )
-                await client.send_message(chat_id=client.log_channel, text=log_text)
+                await client.send_message(chat_id=client.log_channel, text=log_text, parse_mode=ParseMode.HTML)
         except Exception as e:
             client.LOGGER(__name__, client.name).warning(f"Failed to send new user log: {e}")
 
