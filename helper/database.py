@@ -550,6 +550,12 @@ class MongoDB:
         settings = await self.get_bot_settings(bot_id)
         return settings.get(key, default)
 
+    async def set_bot_setting(self, key: str, value, bot_id: str = "default"):
+        """Set a single bot setting"""
+        settings = await self.get_bot_settings(bot_id)
+        settings[key] = value
+        await self.set_bot_settings(settings, bot_id)
+
     # ✅ MESSAGES SETTINGS FUNCTIONS
 
     async def set_messages_settings(self, messages_data: dict, bot_id: str = "default"):
