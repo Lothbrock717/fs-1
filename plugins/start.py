@@ -12,7 +12,7 @@ import re
 
 #===============================================================#
 
-def clean_caption(text: str) -> str:
+def clean_caption(text: str, blacklist: list = None) -> str:
     """Strip links, HTML tags, promotional lines and leftover dashes from caption."""
     if not text:
         return ""
@@ -26,7 +26,7 @@ def clean_caption(text: str) -> str:
     text = re.sub(r'@\w+', '', text)
     # Remove FOR MORE lines (including unicode bold/italic variants) and everything after
     text = re.sub(r'(?i)\bfor more\b.*', '', text, flags=re.DOTALL)
-    # Remove unicode styled "FOR MORE" (𝙁𝙊𝙍 𝙈𝙊𝙍𝙀) - match by unicode range
+    # Remove unicode styled "FOR MORE" - match by unicode range
     text = re.sub(r'[\U0001D400-\U0001D7FF\U0001D600-\U0001D9FF]+\s*[:\-]?.*', '', text, flags=re.DOTALL)
     # Remove ~ lines (channel promotions like ~ Yagami Universe)
     text = re.sub(r'~.*', '', text, flags=re.DOTALL)
@@ -34,6 +34,15 @@ def clean_caption(text: str) -> str:
     text = re.sub(r'(?i)•?\s*file\s*name\s*[:\-]?\s*', '', text)
     # Remove Join lines
     text = re.sub(r'(?i)join.*', '', text)
+    # Remove arrow lines (e.g. ➠Gallery Download Link / Online Watch)
+    text = re.sub(r'➠.*', '', text, flags=re.DOTALL)
+    # Remove Share And Support lines
+    text = re.sub(r'(?i)share\s*(and|&)\s*support.*', '', text, flags=re.DOTALL)
+    # Remove blacklisted words/lines
+    if blacklist:
+        for word in blacklist:
+            if word:
+                text = re.sub(rf'.*{re.escape(word)}.*\n?', '', text, flags=re.IGNORECASE)
     # Remove leading/trailing dashes and separators
     text = re.sub(r'^[\s\-–—|•:]+', '', text)
     text = re.sub(r'[\s\-–—|]+$', '', text)
@@ -44,7 +53,8 @@ def clean_caption(text: str) -> str:
 
 def build_caption(client, raw_caption: str) -> str:
     """Build final caption using custom template or prefix, after stripping original links."""
-    cleaned = clean_caption(raw_caption)
+    blacklist = getattr(client, 'caption_blacklist', [])
+    cleaned = clean_caption(raw_caption, blacklist=blacklist)
     template = getattr(client, 'file_caption_template', '')
     if template:
         return template.replace('{original_caption}', cleaned).replace('{filename}', cleaned)
