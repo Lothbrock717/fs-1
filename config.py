@@ -33,6 +33,9 @@ DB_CHANNEL = -1003737655339# just put channel id dont add ""
 
 # Auto Delete Timer (seconds)
 AUTO_DEL = 900
+# Log Channel (new user notifications) — set to None to disable
+LOG_CHANNEL = -1002911675489
+
 # Admin IDs
 ADMINS = [8235920952]
 # Bot Settings
