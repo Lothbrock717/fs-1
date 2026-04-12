@@ -108,14 +108,16 @@ class MongoDB:
         found = await self.user_data.find_one(query)
         return bool(found)
 
-    async def add_user(self, user_id: int, ban: bool = False, bot_id: str = None):
-        doc = {'_id': user_id, 'ban': ban}
-        if bot_id:
-            doc['bot_id'] = bot_id
+    async def add_user(self, user_id: int, ban: bool = False, bot_id: str = None) -> bool:
+        """Returns True if user was newly inserted, False if already existed."""
         try:
+            doc = {'_id': user_id, 'ban': ban}
+            if bot_id:
+                doc['bot_id'] = bot_id
             await self.user_data.insert_one(doc)
+            return True
         except Exception:
-            pass
+            return False
 
     async def full_userbase(self) -> list[int]:
         cursor = self.user_data.find()
