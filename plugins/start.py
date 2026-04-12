@@ -80,11 +80,11 @@ async def start_command(client: Client, message: Message):
     user_id = message.from_user.id
 
     # 1. Add user if not present
-    present = await client.mongodb.present_user(user_id)
+    present = await client.mongodb.present_user(user_id, bot_id=client.username)
     is_new_user = not present
     if not present:
         try:
-            await client.mongodb.add_user(user_id)
+            await client.mongodb.add_user(user_id, bot_id=client.username)
         except Exception as e:
             client.LOGGER(__name__, client.name).warning(f"Error adding a user:\n{e}")
 
