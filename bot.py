@@ -8,7 +8,7 @@ from pyrogram import Client
 from pyrogram.enums import ParseMode
 import sys
 from datetime import datetime
-from config import LOGGER, PORT, OWNER_ID, SHORT_URL, SHORT_API, SHORT_TUT
+from config import LOGGER, PORT, OWNER_ID, SHORT_URL, SHORT_API, SHORT_TUT, LOG_CHANNEL
 from helper import MongoDB
 
 version = "v1.0.0"
@@ -46,6 +46,7 @@ class Bot(Client):
         self.file_prefix = ""
         self.file_caption_template = ""
         self.file_buttons = []
+        self.log_channel = LOG_CHANNEL
     
     async def start(self):
         await super().start()
