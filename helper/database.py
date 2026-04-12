@@ -102,20 +102,27 @@ class MongoDB:
     # ✅ USER FUNCTIONS
 
     async def present_user(self, user_id: int, bot_id: str = None) -> bool:
-        query = {'_id': user_id}
         if bot_id:
-            query['bot_id'] = bot_id
-        found = await self.user_data.find_one(query)
+            doc_id = f"{bot_id}_{user_id}"
+            found = await self.user_data.find_one({'_id': doc_id})
+        else:
+            found = await self.user_data.find_one({'_id': user_id})
         return bool(found)
 
     async def add_user(self, user_id: int, ban: bool = False, bot_id: str = None) -> bool:
         """Returns True if user was newly inserted, False if already existed."""
         try:
-            doc = {'_id': user_id, 'ban': ban}
             if bot_id:
-                doc['bot_id'] = bot_id
-            await self.user_data.insert_one(doc)
-            return True
+                doc_id = f"{bot_id}_{user_id}"
+                result = await self.user_data.update_one(
+                    {'_id': doc_id},
+                    {'$setOnInsert': {'_id': doc_id, 'user_id': user_id, 'bot_id': bot_id, 'ban': ban}},
+                    upsert=True
+                )
+                return result.upserted_id is not None
+            else:
+                await self.user_data.insert_one({'_id': user_id, 'ban': ban})
+                return True
         except Exception:
             return False
 
