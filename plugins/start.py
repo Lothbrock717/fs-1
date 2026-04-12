@@ -83,12 +83,9 @@ async def start_command(client: Client, message: Message):
     present = await client.mongodb.present_user(user_id, bot_id=client.username)
     is_new_user = not present
     if not present:
-        try:
-            await client.mongodb.add_user(user_id, bot_id=client.username)
-        except Exception as e:
-            client.LOGGER(__name__, client.name).warning(f"Error adding a user:\n{e}")
+        is_new_user = await client.mongodb.add_user(user_id, bot_id=client.username)
 
-    # Log to LOG_CHANNEL for every new user
+    # Log to LOG_CHANNEL only if truly newly inserted
     if is_new_user:
         try:
             log_ch = getattr(client, 'log_channel', None)
