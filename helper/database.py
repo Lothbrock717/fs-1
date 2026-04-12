@@ -101,12 +101,21 @@ class MongoDB:
 
     # ✅ USER FUNCTIONS
 
-    async def present_user(self, user_id: int) -> bool:
-        found = await self.user_data.find_one({'_id': user_id})
+    async def present_user(self, user_id: int, bot_id: str = None) -> bool:
+        query = {'_id': user_id}
+        if bot_id:
+            query['bot_id'] = bot_id
+        found = await self.user_data.find_one(query)
         return bool(found)
 
-    async def add_user(self, user_id: int, ban: bool = False):
-        await self.user_data.insert_one({'_id': user_id, 'ban': ban})
+    async def add_user(self, user_id: int, ban: bool = False, bot_id: str = None):
+        doc = {'_id': user_id, 'ban': ban}
+        if bot_id:
+            doc['bot_id'] = bot_id
+        try:
+            await self.user_data.insert_one(doc)
+        except Exception:
+            pass
 
     async def full_userbase(self) -> list[int]:
         cursor = self.user_data.find()
