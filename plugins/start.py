@@ -117,7 +117,7 @@ async def start_command(client: Client, message: Message):
         # Short links use prefix "yu3elk" so we know to skip them on second hit
         is_short_link = original_payload.startswith("yu3elk")
 
-        if not is_user_pro and user_id != OWNER_ID and not is_short_link and shortner_enabled and not payload.startswith("batch-"):
+        if not is_user_pro and user_id != OWNER_ID and not is_short_link and shortner_enabled and not payload.startswith("batch-") and not payload.startswith("F2Botz_"):
             try:
                 short_link = get_short(
                     f"https://t.me/{client.username}?start=yu3elk{original_payload}7",
