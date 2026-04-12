@@ -1,4 +1,4 @@
-#(©) Codeflix_Bots
+
 import asyncio
 asyncio.set_event_loop(asyncio.new_event_loop())
 from aiohttp import web
@@ -47,6 +47,7 @@ class Bot(Client):
         self.file_caption_template = ""
         self.file_buttons = []
         self.log_channel = LOG_CHANNEL
+        self.caption_blacklist = []
     
     async def start(self):
         await super().start()
@@ -171,6 +172,13 @@ class Bot(Client):
             self.LOGGER(__name__, self.name).warning(f"Make Sure bot is Admin in DB Channel, and Double check the database channel Value, Current Value {self.db}")
             self.LOGGER(__name__, self.name).info("\nBot Stopped. Join https://t.me/animes_cruise for support")
             sys.exit()
+        try:
+            self.caption_blacklist = await self.mongodb.get_bot_setting('caption_blacklist', [], self.bot_id)
+            self.LOGGER(__name__, self.name).info(f"Blacklist loaded: {self.caption_blacklist}")
+        except Exception as e:
+            self.LOGGER(__name__, self.name).warning(f"Error loading blacklist: {e}")
+            self.caption_blacklist = []
+
         self.LOGGER(__name__, self.name).info("Bot Started!!")
         
         # Send restart msge to owner
