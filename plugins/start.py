@@ -88,7 +88,7 @@ async def start_command(client: Client, message: Message):
         except Exception as e:
             client.LOGGER(__name__, client.name).warning(f"Error adding a user:\n{e}")
 
-    # Log new user to LOG_CHANNEL (independent — won't crash bot if channel not set up)
+    # Log to LOG_CHANNEL for every new user
     if is_new_user:
         try:
             log_ch = getattr(client, 'log_channel', None)
@@ -101,8 +101,13 @@ async def start_command(client: Client, message: Message):
                     text=f"#NEW_USER:\n\nNew User {mention} started @{client.username} !!",
                     parse_mode=ParseMode.HTML
                 )
+                client.LOGGER(__name__, client.name).info(f"New user log sent: {user_id}")
+            else:
+                client.LOGGER(__name__, client.name).warning("log_channel is None or not set")
         except Exception as e:
             client.LOGGER(__name__, client.name).warning(f"Log channel send failed: {e}")
+    else:
+        client.LOGGER(__name__, client.name).info(f"Returning user, no log sent: {user_id}")
 
     # 2. Check if banned
     is_banned = await client.mongodb.is_banned(user_id)
