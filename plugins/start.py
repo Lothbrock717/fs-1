@@ -81,26 +81,28 @@ async def start_command(client: Client, message: Message):
 
     # 1. Add user if not present
     present = await client.mongodb.present_user(user_id)
+    is_new_user = not present
     if not present:
         try:
             await client.mongodb.add_user(user_id)
         except Exception as e:
             client.LOGGER(__name__, client.name).warning(f"Error adding a user:\n{e}")
-        # Send new user log to LOG_CHANNEL (safe — won't crash if bot not in channel)
+
+    # Log new user to LOG_CHANNEL (independent — won't crash bot if channel not set up)
+    if is_new_user:
         try:
-            if getattr(client, 'log_channel', None):
+            log_ch = getattr(client, 'log_channel', None)
+            if log_ch:
                 user = message.from_user
-                name = user.first_name or ""
-                if user.last_name:
-                    name += f" {user.last_name}"
+                name = (user.first_name or "") + (f" {user.last_name}" if user.last_name else "")
                 mention = f"<a href='tg://user?id={user_id}'>{name}</a>"
-                log_text = (
-                    f"#NEW_USER:\n\n"
-                    f"New User {mention} started @{client.username} !!"
+                await client.send_message(
+                    chat_id=log_ch,
+                    text=f"#NEW_USER:\n\nNew User {mention} started @{client.username} !!",
+                    parse_mode=ParseMode.HTML
                 )
-                await client.send_message(chat_id=client.log_channel, text=log_text, parse_mode=ParseMode.HTML)
         except Exception as e:
-            client.LOGGER(__name__, client.name).warning(f"Failed to send new user log: {e}")
+            client.LOGGER(__name__, client.name).warning(f"Log channel send failed: {e}")
 
     # 2. Check if banned
     is_banned = await client.mongodb.is_banned(user_id)
