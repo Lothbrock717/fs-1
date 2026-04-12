@@ -165,3 +165,43 @@ async def remove_admins(client: Client, query: CallbackQuery):
         return await ids_msg.reply(f"Error: {e}")
     await admins(client, query)
     return await ids_msg.reply(f"__{len(ids)} admin {'id' if len(ids)==1 else 'ids'} have been removed!!__")
+
+#===============================================================#
+
+@Client.on_message(filters.command('bl') & filters.private)
+async def blacklist_cmd(client: Client, message: Message):
+    if message.from_user.id not in client.admins:
+        return await message.reply(client.reply_text)
+
+    args = message.text.split(None, 1)
+
+    # /bl list
+    if len(args) == 1 or args[1].strip().lower() == "list":
+        bl = getattr(client, 'caption_blacklist', [])
+        if not bl:
+            return await message.reply("**Blacklist is empty.**")
+        items = "\n".join(f"`{w}`" for w in bl)
+        return await message.reply(f"**Blacklisted words:**\n{items}")
+
+    action_text = args[1].strip()
+
+    # /bl del (word)
+    if action_text.lower().startswith("del "):
+        word = action_text[4:].strip()
+        bl = getattr(client, 'caption_blacklist', [])
+        if word in bl:
+            bl.remove(word)
+            client.caption_blacklist = bl
+            await client.mongodb.set_bot_setting('caption_blacklist', bl, client.bot_id)
+            return await message.reply(f"Removed `{word}` from blacklist.")
+        return await message.reply(f"`{word}` not in blacklist.")
+
+    # /bl (word) — add
+    word = action_text
+    bl = getattr(client, 'caption_blacklist', [])
+    if word in bl:
+        return await message.reply(f"`{word}` already in blacklist.")
+    bl.append(word)
+    client.caption_blacklist = bl
+    await client.mongodb.set_bot_setting('caption_blacklist', bl, client.bot_id)
+    await message.reply(f"Added `{word}` to blacklist. ✅\n\nIt will be stripped from all captions.")
