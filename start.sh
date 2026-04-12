@@ -1,5 +1,6 @@
 #!/bin/bash
 cd /app
-git pull origin Yato
+git fetch origin Yato
+git reset --hard origin/Yato
 pip install -r requirements.txt -q
 python main.py
