@@ -85,6 +85,21 @@ async def start_command(client: Client, message: Message):
             await client.mongodb.add_user(user_id)
         except Exception as e:
             client.LOGGER(__name__, client.name).warning(f"Error adding a user:\n{e}")
+        # Send new user log to LOG_CHANNEL (safe — won't crash if bot not in channel)
+        try:
+            if getattr(client, 'log_channel', None):
+                user = message.from_user
+                name = user.first_name or ""
+                if user.last_name:
+                    name += f" {user.last_name}"
+                mention = f"<a href='tg://user?id={user_id}'>{name}</a>"
+                log_text = (
+                    f"#NEW_USER:\n\n"
+                    f"New User {mention} started @{client.username} !!"
+                )
+                await client.send_message(chat_id=client.log_channel, text=log_text)
+        except Exception as e:
+            client.LOGGER(__name__, client.name).warning(f"Failed to send new user log: {e}")
 
     # 2. Check if banned
     is_banned = await client.mongodb.is_banned(user_id)
@@ -117,7 +132,7 @@ async def start_command(client: Client, message: Message):
         # Short links use prefix "yu3elk" so we know to skip them on second hit
         is_short_link = original_payload.startswith("yu3elk")
 
-        if not is_user_pro and user_id != OWNER_ID and not is_short_link and shortner_enabled and not payload.startswith("batch-") and not payload.startswith("F2Botz_"):
+        if not is_user_pro and user_id != OWNER_ID and not is_short_link and shortner_enabled:
             try:
                 short_link = get_short(
                     f"https://t.me/{client.username}?start=yu3elk{original_payload}7",
@@ -173,38 +188,24 @@ async def start_command(client: Client, message: Message):
 
             temp_msg = await message.reply("Wait A Sec..")
             yugen_msgs = []
-
-            # Build list of channels to search: primary first, then secondaries
-            channels_to_try = [client.db]
-            for ch_str in getattr(client, 'db_channels', {}):
-                ch_id = int(ch_str)
-                if ch_id != client.db:
-                    channels_to_try.append(ch_id)
-
             for msg_id in msg_ids:
-                sent = False
-                for db_chan in channels_to_try:
-                    try:
-                        db_msg = await client.get_messages(chat_id=db_chan, message_ids=msg_id)
-                        if db_msg and not db_msg.empty:
-                            _raw_caption = "" if not db_msg.caption else db_msg.caption.html
-                            caption = build_caption(client, _raw_caption)
-                            reply_markup = build_file_buttons(client) or (db_msg.reply_markup if not client.disable_btn else None)
-                            copied = await db_msg.copy(
-                                chat_id=message.from_user.id,
-                                caption=caption,
-                                reply_markup=reply_markup,
-                                protect_content=client.protect
-                            )
-                            yugen_msgs.append(copied)
-                            sent = True
-                            break
-                    except FloodWait as e:
-                        await asyncio.sleep(e.value)
-                    except Exception as e:
-                        client.LOGGER(__name__, client.name).warning(f"Failed to send batch file {msg_id} from {db_chan}: {e}")
-                if not sent:
-                    client.LOGGER(__name__, client.name).warning(f"msg_id {msg_id} not found in any DB channel")
+                try:
+                    db_msg = await client.get_messages(chat_id=client.db, message_ids=msg_id)
+                    if db_msg and not db_msg.empty:
+                        _raw_caption = "" if not db_msg.caption else db_msg.caption.html
+                        caption = build_caption(client, _raw_caption)
+                        reply_markup = build_file_buttons(client) or (db_msg.reply_markup if not client.disable_btn else None)
+                        copied = await db_msg.copy(
+                            chat_id=message.from_user.id,
+                            caption=caption,
+                            reply_markup=reply_markup,
+                            protect_content=client.protect
+                        )
+                        yugen_msgs.append(copied)
+                except FloodWait as e:
+                    await asyncio.sleep(e.value)
+                except Exception as e:
+                    client.LOGGER(__name__, client.name).warning(f"Failed to send batch file {msg_id}: {e}")
 
             await temp_msg.delete()
             if not yugen_msgs:
