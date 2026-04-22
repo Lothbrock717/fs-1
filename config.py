@@ -19,7 +19,7 @@ API_ID = "26444821"
 API_HASH = "a58efd1d6483e3f0d5b2757d9f665c24"
 WORKERS = 10
 
-DB_URI = "mongodb+srv://abhay:store@store.nmvpb5w.mongodb.net/?retryWrites=true&w=majority&appName=STORE"
+DB_URI = ""
 DB_NAME = ""
 
 FSUBS = [[-1003597446654, True, 10]] # Force Subscription Channels [channel_id, request_enabled, timer_in_minutes]
