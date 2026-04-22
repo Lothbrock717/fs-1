@@ -22,7 +22,7 @@ WORKERS = 10
 DB_URI = ""
 DB_NAME = ""
 
-FSUBS = [[-1003597446654, True, 10]] # Force Subscription Channels [channel_id, request_enabled, timer_in_minutes]
+FSUBS = [[-1003597446654, False, 10]] # Force Subscription Channels [channel_id, request_enabled, timer_in_minutes]
 # Database Channel (Primary)
 DB_CHANNEL =  # just put channel id dont add ""
 # Multiple Database Channels (can be set via bot settings)
