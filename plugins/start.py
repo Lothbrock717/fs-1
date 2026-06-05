@@ -5,7 +5,7 @@ from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
 import humanize
 from config import MSG_EFFECT, OWNER_ID
 from plugins.shortner import get_short
-from helper.helper_func import force_sub, batch_auto_del_notification
+from helper.helper_func import force_sub, batch_auto_del_notification, _track_task
 from helper.helper_func import str_to_b64, b64_to_str
 import asyncio
 import re
@@ -286,7 +286,7 @@ async def start_command(client: Client, message: Message):
 
         # 8. Auto delete timer
         if yugen_msgs and client.auto_del > 0:
-            asyncio.create_task(batch_auto_del_notification(
+            _track_task(batch_auto_del_notification(
                 bot_username=client.username,
                 messages=yugen_msgs,
                 delay_time=client.auto_del,
