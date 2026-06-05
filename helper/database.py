@@ -7,7 +7,13 @@ class MongoDB:
     def __new__(cls, uri: str, db_name: str):
         if (uri, db_name) not in cls._instances:
             instance = super().__new__(cls)
-            instance.client = motor.motor_asyncio.AsyncIOMotorClient(uri)
+            instance.client = motor.motor_asyncio.AsyncIOMotorClient(
+                uri,
+                serverSelectionTimeoutMS=5000,
+                connectTimeoutMS=5000,
+                socketTimeoutMS=10000,
+                maxPoolSize=10
+            )
             instance.db = instance.client[db_name]
             instance.user_data = instance.db["users"]
             instance.channel_data = instance.db["channels"]
