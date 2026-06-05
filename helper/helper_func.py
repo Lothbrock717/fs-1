@@ -1,12 +1,23 @@
 import base64
 import re
 import asyncio
+import weakref
 from pyrogram import filters, Client
 from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
 from pyrogram.enums import ChatMemberStatus
 from pyrogram.errors import UserNotParticipant, Forbidden, PeerIdInvalid, ChatAdminRequired, FloodWait
 from datetime import datetime, timedelta
 from pyrogram import errors
+
+# Task registry — prevents background tasks from accumulating over weeks
+_background_tasks: set = set()
+
+def _track_task(coro):
+    """Create a tracked task that auto-removes itself when done."""
+    task = asyncio.create_task(coro)
+    _background_tasks.add(task)
+    task.add_done_callback(_background_tasks.discard)
+    return task
 
 #===============================================================#
 # Luffy-style encode/decode (plain base64 of raw ID, no multiply)
@@ -53,7 +64,7 @@ async def get_messages(client, message_ids):
             # Use new multi-DB channel function
             msgs = await get_messages_from_db_channels(client, temb_ids)
         except FloodWait as e:
-            await asyncio.sleep(e.x)
+            await asyncio.sleep(e.value)
             msgs = await get_messages_from_db_channels(client, temb_ids)
         except:
             pass
@@ -171,7 +182,7 @@ async def get_messages_from_db_channels(client, temb_ids):
                 continue
         
     except FloodWait as e:
-        await asyncio.sleep(e.x)
+        await asyncio.sleep(e.value)
         # Retry with the same function
         return await get_messages_from_db_channels(client, temb_ids)
     except Exception as e:
