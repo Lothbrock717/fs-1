@@ -9,6 +9,7 @@ from helper.helper_func import force_sub, batch_auto_del_notification, _track_ta
 from helper.helper_func import str_to_b64, b64_to_str
 import asyncio
 import re
+import secrets
 
 #===============================================================#
 
@@ -137,19 +138,36 @@ async def start_command(client: Client, message: Message):
 
         # 4. Check if shortner is enabled
         shortner_enabled = getattr(client, 'shortner_enabled', False)
-        # ── Luffy-style shortner: wrap non-premium users with short link ──────
-        # Short links use prefix "yu3elk" so we know to skip them on second hit
+        # ── Random-token shortner ─────────────────────────────────────────────
+        # Each request gets a unique random token stored in MongoDB.
+        # Fixed-prefix bypass (yu3elk) is no longer used for new links.
         is_short_link = original_payload.startswith("yu3elk")
 
         # Only newly generated links (nbatch- / F2Botz2_) are routed through the shortener.
         # Older links (batch- / F2Botz_) bypass the shortener and go straight to the files.
         is_new_link = original_payload.startswith("nbatch-") or original_payload.startswith("F2Botz2_")
 
-        if not is_user_pro and user_id != OWNER_ID and not is_short_link and shortner_enabled and is_new_link:
+        # Check if payload is a one-time token (24 hex chars)
+        is_token_link = len(original_payload) == 24 and all(c in '0123456789abcdef' for c in original_payload)
+
+        if is_token_link:
+            # Validate token from DB
+            real_payload = await client.mongodb.get_token_payload(original_payload)
+            if not real_payload:
+                return await message.reply("⚠️ This link has expired or is invalid. Please get a fresh link.")
+            await client.mongodb.delete_token(original_payload)
+            original_payload = real_payload
+            is_new_link = False  # already validated, skip shortener gate below
+
+        if not is_user_pro and user_id != OWNER_ID and not is_short_link and not is_token_link and shortner_enabled and is_new_link:
+            # Generate a unique random token and store it
+            token = secrets.token_hex(12)  # 24-char hex string
+            await client.mongodb.store_token(token, original_payload, expire_minutes=10)
+
             short_link = None
             try:
                 short_link = get_short(
-                    f"https://t.me/{client.username}?start=yu3elk{original_payload}7",
+                    f"https://t.me/{client.username}?start={token}",
                     client
                 )
             except Exception as e:
@@ -175,7 +193,7 @@ async def start_command(client: Client, message: Message):
                     ])
                 )
                 return
-            # If shortener returned invalid URL, fall through and deliver file directly
+            # If shortener failed, fall through and deliver file directly
 
         # Strip the short-link prefix if present before decoding
         payload = original_payload
