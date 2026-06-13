@@ -145,7 +145,12 @@ async def start_command(client: Client, message: Message):
         # Older links (batch- / F2Botz_) bypass the shortener and go straight to the files.
         is_new_link = original_payload.startswith("nbatch-") or original_payload.startswith("F2Botz2_")
 
-        if not is_user_pro and user_id != OWNER_ID and not is_short_link and shortner_enabled and is_new_link:
+        # Skip shortener if URL or API is not configured — deliver file directly
+        short_url_val = getattr(client, 'short_url', '')
+        short_api_val = getattr(client, 'short_api', '')
+        shortner_configured = bool(short_url_val and short_api_val)
+
+        if not is_user_pro and user_id != OWNER_ID and not is_short_link and shortner_enabled and is_new_link and shortner_configured:
             try:
                 short_link = get_short(
                     f"https://t.me/{client.username}?start=yu3elk{original_payload}7",
