@@ -202,7 +202,7 @@ async def start_command(client: Client, message: Message):
                     except Exception:
                         pass
 
-                _track_task(_delete_after(sent, 86400))  # delete after 1 day
+                _track_task(_delete_after(sent, 3600))  # delete after 1 hour
                 return
             # If shortener failed, fall through and deliver file directly
 
