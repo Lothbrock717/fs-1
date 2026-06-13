@@ -137,12 +137,6 @@ async def start_command(client: Client, message: Message):
 
         # 4. Check if shortner is enabled
         shortner_enabled = getattr(client, 'shortner_enabled', False)
-        short_url = getattr(client, 'short_url', '')
-        short_api = getattr(client, 'short_api', '')
-        # Disable shortner if url or api not configured
-        if not short_url or not short_api:
-            shortner_enabled = False
-
         # ── Luffy-style shortner: wrap non-premium users with short link ──────
         # Short links use prefix "yu3elk" so we know to skip them on second hit
         is_short_link = original_payload.startswith("yu3elk")
