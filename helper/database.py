@@ -767,3 +767,32 @@ class MongoDB:
                 "admins": [],
                 "shortner_settings": {}
             }
+
+    # ── Short-link token store ──────────────────────────────────────────────
+    # Each token is a random 12-char string stored with the real payload and
+    # a TTL expiry. MongoDB TTL index auto-deletes expired documents.
+
+    async def store_token(self, token: str, payload: str, expire_minutes: int = 10):
+        """Store a one-time token mapping to the real file payload."""
+        await self.db["short_tokens"].update_one(
+            {"_id": token},
+            {"$set": {
+                "payload": payload,
+                "expires_at": datetime.utcnow() + timedelta(minutes=expire_minutes)
+            }},
+            upsert=True
+        )
+
+    async def get_token_payload(self, token: str) -> str | None:
+        """Look up token and return payload if valid, else None."""
+        doc = await self.db["short_tokens"].find_one({"_id": token})
+        if not doc:
+            return None
+        if doc["expires_at"] < datetime.utcnow():
+            await self.db["short_tokens"].delete_one({"_id": token})
+            return None
+        return doc["payload"]
+
+    async def delete_token(self, token: str):
+        """Delete token after use (single-use enforcement)."""
+        await self.db["short_tokens"].delete_one({"_id": token})
