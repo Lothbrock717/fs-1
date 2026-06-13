@@ -19,7 +19,7 @@ def get_short(url, client):
     # Check if shortner is enabled
     shortner_enabled = getattr(client, 'shortner_enabled', True)
     if not shortner_enabled:
-        return url  # Return original URL if shortner is disabled
+        return None  # shortner disabled — caller will deliver file directly
 
     # Step 2: Check cache
     if url in shortened_urls_cache:
