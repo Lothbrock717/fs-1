@@ -85,7 +85,7 @@ async def batch(client: Client, message: Message):
     # Luffy-style: space-separated IDs encoded in b64 with "batch-" prefix
     ids = list(range(f_msg_id, s_msg_id + 1)) if f_msg_id <= s_msg_id else list(range(f_msg_id, s_msg_id - 1, -1))
     encoded = str_to_b64(" ".join(str(i) for i in ids))
-    link = f"https://t.me/{client.username}?start=batch-{encoded}"
+    link = f"https://t.me/{client.username}?start=nbatch-{encoded}"
     reply_markup = InlineKeyboardMarkup([[InlineKeyboardButton("🔁 sʜᴀʀᴇ ᴜʀʟ", url=f'https://telegram.me/share/url?url={link}')]])
     await second_message.reply_text(f"<blockquote>✓ ʜᴇʀᴇ ɪs ʏᴏᴜʀ ʙᴀᴛᴄʜ ʟɪɴᴋ</blockquote>\n\n<code>{link}</code>", quote=True, reply_markup=reply_markup)
 
@@ -120,7 +120,7 @@ async def link_generator(client: Client, message: Message):
             continue
 
     # Luffy-style: F2Botz_ + str_to_b64(plain message ID)
-    link = f"https://t.me/{client.username}?start=F2Botz_{str_to_b64(str(msg_id))}"
+    link = f"https://t.me/{client.username}?start=F2Botz2_{str_to_b64(str(msg_id))}"
     reply_markup = InlineKeyboardMarkup([[InlineKeyboardButton("🔁 sʜᴀʀᴇ ᴜʀʟ", url=f'https://telegram.me/share/url?url={link}')]])
     await channel_message.reply_text(f"<blockquote>✓ ʜᴇʀᴇ ɪs ʏᴏᴜʀ ʟɪɴᴋ</blockquote>\n\n<code>{link}</code>", quote=True, reply_markup=reply_markup)
 
@@ -164,7 +164,7 @@ async def nbatch(client: Client, message: Message):
     # Luffy-style batch link
     ids = list(range(f_msg_id, s_msg_id + 1))
     encoded = str_to_b64(" ".join(str(i) for i in ids))
-    link = f"https://t.me/{client.username}?start=batch-{encoded}"
+    link = f"https://t.me/{client.username}?start=nbatch-{encoded}"
     
     reply_markup = InlineKeyboardMarkup([
         [InlineKeyboardButton("📫 ʏᴏᴜʀ ʙᴀᴛᴄʜ ᴜʀʟ", url=f'https://telegram.me/share/url?url={link}')]
