@@ -141,7 +141,11 @@ async def start_command(client: Client, message: Message):
         # Short links use prefix "yu3elk" so we know to skip them on second hit
         is_short_link = original_payload.startswith("yu3elk")
 
-        if not is_user_pro and user_id != OWNER_ID and not is_short_link and shortner_enabled:
+        # Only newly generated links (nbatch- / F2Botz2_) are routed through the shortener.
+        # Older links (batch- / F2Botz_) bypass the shortener and go straight to the files.
+        is_new_link = original_payload.startswith("nbatch-") or original_payload.startswith("F2Botz2_")
+
+        if not is_user_pro and user_id != OWNER_ID and not is_short_link and shortner_enabled and is_new_link:
             try:
                 short_link = get_short(
                     f"https://t.me/{client.username}?start=yu3elk{original_payload}7",
@@ -179,7 +183,7 @@ async def start_command(client: Client, message: Message):
         # ── Decode Luffy-style links ──────────────────────────────────────────
 
         # batch link: start=batch-<b64 of space-separated IDs>
-        if payload.startswith("batch-"):
+        if payload.startswith("batch-") or payload.startswith("nbatch-"):
             _, files_id = payload.split("-", 1)
             try:
                 decoded = b64_to_str(files_id)
@@ -221,8 +225,8 @@ async def start_command(client: Client, message: Message):
                 return await message.reply(f"Couldn't find the files in the database.\nDB: `{client.db}`")
 
         # F2Botz_ single-file link (admin-saved private files)
-        elif payload.startswith("F2Botz_"):
-            encoded = payload[7:]
+        elif payload.startswith("F2Botz_") or payload.startswith("F2Botz2_"):
+            encoded = payload[8:] if payload.startswith("F2Botz2_") else payload[7:]
             try:
                 file_id = int(b64_to_str(encoded))
             except Exception as e:
