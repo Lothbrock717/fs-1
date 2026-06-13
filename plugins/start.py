@@ -145,12 +145,8 @@ async def start_command(client: Client, message: Message):
         # Older links (batch- / F2Botz_) bypass the shortener and go straight to the files.
         is_new_link = original_payload.startswith("nbatch-") or original_payload.startswith("F2Botz2_")
 
-        # Skip shortener if URL or API is not configured — deliver file directly
-        short_url_val = getattr(client, 'short_url', '')
-        short_api_val = getattr(client, 'short_api', '')
-        shortner_configured = bool(short_url_val and short_api_val)
-
-        if not is_user_pro and user_id != OWNER_ID and not is_short_link and shortner_enabled and is_new_link and shortner_configured:
+        if not is_user_pro and user_id != OWNER_ID and not is_short_link and shortner_enabled and is_new_link:
+            short_link = None
             try:
                 short_link = get_short(
                     f"https://t.me/{client.username}?start=yu3elk{original_payload}7",
@@ -158,27 +154,28 @@ async def start_command(client: Client, message: Message):
                 )
             except Exception as e:
                 client.LOGGER(__name__, client.name).warning(f"Shortener failed: {e}")
-                return await message.reply("Couldn't generate short link.")
 
-            short_photo = client.messages.get("SHORT_PIC", "")
-            short_caption = client.messages.get("SHORT_MSG", "")
-            tutorial_link = getattr(client, 'tutorial_link', "https://t.me/How_to_Download_7x/26")
+            if short_link and short_link.startswith("http"):
+                short_photo = client.messages.get("SHORT_PIC", "")
+                short_caption = client.messages.get("SHORT_MSG", "")
+                tutorial_link = getattr(client, 'tutorial_link', "https://t.me/How_to_Download_7x/26")
 
-            await client.send_photo(
-                chat_id=message.chat.id,
-                photo=short_photo,
-                caption=short_caption,
-                reply_markup=InlineKeyboardMarkup([
-                    [
-                        InlineKeyboardButton("• ᴏᴘᴇɴ ʟɪɴᴋ", url=short_link),
-                        InlineKeyboardButton("ᴛᴜᴛᴏʀɪᴀʟ •", url=tutorial_link)
-                    ],
-                    [
-                        InlineKeyboardButton(" • ʙᴜʏ ᴘʀᴇᴍɪᴜᴍ •", url="https://t.me/+V7zUi7O_DkEyNGZl")
-                    ]
-                ])
-            )
-            return
+                await client.send_photo(
+                    chat_id=message.chat.id,
+                    photo=short_photo,
+                    caption=short_caption,
+                    reply_markup=InlineKeyboardMarkup([
+                        [
+                            InlineKeyboardButton("• ᴏᴘᴇɴ ʟɪɴᴋ", url=short_link),
+                            InlineKeyboardButton("ᴛᴜᴛᴏʀɪᴀʟ •", url=tutorial_link)
+                        ],
+                        [
+                            InlineKeyboardButton(" • ʙᴜʏ ᴘʀᴇᴍɪᴜᴍ •", url="https://t.me/+V7zUi7O_DkEyNGZl")
+                        ]
+                    ])
+                )
+                return
+            # If shortener returned invalid URL, fall through and deliver file directly
 
         # Strip the short-link prefix if present before decoding
         payload = original_payload
