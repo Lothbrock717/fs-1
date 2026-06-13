@@ -158,7 +158,7 @@ async def start_command(client: Client, message: Message):
             if short_link and short_link.startswith("http"):
                 short_photo = client.messages.get("SHORT_PIC", "")
                 short_caption = client.messages.get("SHORT_MSG", "")
-                tutorial_link = getattr(client, 'tutorial_link', "https://t.me/How_to_Download_7x/26")
+                tutorial_link = getattr(client, 'tutorial_link', "") or "https://t.me/How_to_Download_7x/26"
 
                 await client.send_photo(
                     chat_id=message.chat.id,
