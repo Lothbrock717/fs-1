@@ -180,7 +180,7 @@ async def start_command(client: Client, message: Message):
                 short_caption = client.messages.get("SHORT_MSG", "")
                 tutorial_link = getattr(client, 'tutorial_link', "") or "https://t.me/How_to_Download_7x/26"
 
-                await client.send_photo(
+                sent = await client.send_photo(
                     chat_id=message.chat.id,
                     photo=short_photo,
                     caption=short_caption,
@@ -194,6 +194,15 @@ async def start_command(client: Client, message: Message):
                         ]
                     ])
                 )
+
+                async def _delete_after(msg, delay):
+                    await asyncio.sleep(delay)
+                    try:
+                        await msg.delete()
+                    except Exception:
+                        pass
+
+                _track_task(_delete_after(sent, 86400))  # delete after 1 day
                 return
             # If shortener failed, fall through and deliver file directly
 
