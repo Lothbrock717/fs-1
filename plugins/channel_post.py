@@ -37,7 +37,7 @@ async def _process_pending_files(client: Client):
 
         # Luffy-style: encode plain message ID with str_to_b64
         file_er_id = str(post_message.id)
-        link = f"https://t.me/{client.username}?start=F2Botz_{str_to_b64(file_er_id)}"
+        link = f"https://t.me/{client.username}?start=F2Botz2_{str_to_b64(file_er_id)}"
 
         reply_markup = InlineKeyboardMarkup([[
             InlineKeyboardButton("🔁 Share URL", url=f'https://telegram.me/share/url?url={link}')
@@ -83,7 +83,7 @@ async def new_post(client: Client, message: Message):
 
     # Luffy-style link for channel posts already stored in DB channel
     file_er_id = str(message.id)
-    link = f"https://t.me/{client.username}?start=F2Botz_{str_to_b64(file_er_id)}"
+    link = f"https://t.me/{client.username}?start=F2Botz2_{str_to_b64(file_er_id)}"
     reply_markup = InlineKeyboardMarkup([[
         InlineKeyboardButton("🔁 Share URL", url=f'https://telegram.me/share/url?url={link}')
     ]])
