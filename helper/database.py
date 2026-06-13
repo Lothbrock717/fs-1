@@ -769,8 +769,8 @@ class MongoDB:
             }
 
     # ── Short-link token store ──────────────────────────────────────────────
-    # Each token is a random 12-char string stored with the real payload and
-    # a TTL expiry. MongoDB TTL index auto-deletes expired documents.
+    # Each token is a random 12-char string stored with the real payload.
+    # Tokens are deleted after use (single-use).
 
     async def store_token(self, token: str, payload: str, expire_minutes: int = 10):
         """Store a one-time token mapping to the real file payload."""
@@ -778,18 +778,21 @@ class MongoDB:
             {"_id": token},
             {"$set": {
                 "payload": payload,
-                "expires_at": datetime.utcnow() + timedelta(minutes=expire_minutes)
             }},
             upsert=True
         )
+
+    async def get_token_by_payload(self, payload: str) -> str | None:
+        """Return existing token for this payload if one exists."""
+        doc = await self.db["short_tokens"].find_one({"payload": payload})
+        if not doc:
+            return None
+        return doc["_id"]
 
     async def get_token_payload(self, token: str) -> str | None:
         """Look up token and return payload if valid, else None."""
         doc = await self.db["short_tokens"].find_one({"_id": token})
         if not doc:
-            return None
-        if doc["expires_at"] < datetime.utcnow():
-            await self.db["short_tokens"].delete_one({"_id": token})
             return None
         return doc["payload"]
 
