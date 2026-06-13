@@ -42,7 +42,7 @@ def get_short(url, client):
     except Exception as e:
         print(f"[Shortener Error] {e}")
 
-    return url  # fallback
+    return None  # fallback — caller should deliver file directly
 
 #===============================================================#
 
