@@ -160,9 +160,11 @@ async def start_command(client: Client, message: Message):
             is_new_link = False  # already validated, skip shortener gate below
 
         if not is_user_pro and user_id != OWNER_ID and not is_short_link and not is_token_link and shortner_enabled and is_new_link:
-            # Generate a unique random token and store it
-            token = secrets.token_hex(12)  # 24-char hex string
-            await client.mongodb.store_token(token, original_payload, expire_minutes=10)
+            # Reuse existing token if one exists for this payload, else generate new
+            token = await client.mongodb.get_token_by_payload(original_payload)
+            if not token:
+                token = secrets.token_hex(12)
+                await client.mongodb.store_token(token, original_payload)
 
             short_link = None
             try:
