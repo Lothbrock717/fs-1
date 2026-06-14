@@ -155,7 +155,6 @@ async def start_command(client: Client, message: Message):
             real_payload = await client.mongodb.get_token_payload(original_payload)
             if not real_payload:
                 return await message.reply("⚠️ This link has expired or is invalid. Please get a fresh link.")
-            await client.mongodb.delete_token(original_payload)
             original_payload = real_payload
             is_new_link = False  # already validated, skip shortener gate below
 
