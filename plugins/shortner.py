@@ -167,6 +167,9 @@ __<blockquote>**≡ ꜱᴇɴᴅ ɴᴇᴡ ꜱʜᴏʀᴛɴᴇʀ ᴜʀʟ ᴀɴᴅ �
                 client.short_url = new_url
                 client.short_api = new_api
                 
+                # Clear cache so old shortened URLs are not reused
+                shortened_urls_cache.clear()
+                
                 # Save to database
                 await client.mongodb.update_shortner_setting('short_url', new_url, client.bot_id)
                 await client.mongodb.update_shortner_setting('short_api', new_api, client.bot_id)
