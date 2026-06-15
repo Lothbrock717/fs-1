@@ -2,28 +2,6 @@ from pyrogram import Client, filters
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from pyrogram.errors.pyromod import ListenerTimeout
 from config import OWNER_ID
-import os
-import aiohttp
-import aiofiles
-
-#===============================================================#
-
-async def upload_to_telegraph(file_path: str) -> str:
-    """Upload a local image file to Telegraph and return the graph.org URL."""
-    url = "https://telegra.ph/upload"
-    async with aiofiles.open(file_path, 'rb') as f:
-        data = await f.read()
-    ext = os.path.splitext(file_path)[1].lower() or '.jpg'
-    mime_map = {'.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png', '.gif': 'image/gif', '.webp': 'image/webp'}
-    mime = mime_map.get(ext, 'image/jpeg')
-    async with aiohttp.ClientSession() as session:
-        form = aiohttp.FormData()
-        form.add_field('file', data, filename=f'photo{ext}', content_type=mime)
-        async with session.post(url, data=form) as resp:
-            result = await resp.json()
-            if isinstance(result, list) and result:
-                return "https://graph.org" + result[0]['src']
-            raise ValueError(f"Telegraph upload failed: {result}")
 
 #===============================================================#
 
@@ -472,33 +450,37 @@ async def rm_short_pic(client, query):
 #===============================================================#
 
 async def _handle_photo_upload(client, query, key: str, label: str):
-    """Shared logic: accept photo or URL, upload photo to Telegraph, save URL to DB."""
+    """Accept photo or URL. If photo: forward to DB channel to get a stable file_id, save it."""
     current = client.messages.get(key, '') or 'ɴᴏᴛ sᴇᴛ'
     msg = f"""<blockquote>✦ ᴄʜᴀɴɢᴇ {label}</blockquote>
 ›› **ᴄᴜʀʀᴇɴᴛ:**
 <code>{current}</code>
 
 __sᴇɴᴅ ᴀ ᴘʜᴏᴛᴏ ᴅɪʀᴇᴄᴛʟʏ ᴏʀ ᴀ https:// ᴜʀʟ.
-ʙᴏᴛ ᴡɪʟʟ ᴜᴘʟᴏᴀᴅ ᴛᴏ Telegraph ᴀɴᴅ sᴀᴠᴇ ᴛʜᴇ ᴜʀʟ ᴀᴜᴛᴏᴍᴀᴛɪᴄᴀʟʟʏ!
+ʙᴏᴛ sᴀᴠᴇs ɪᴛ ᴀᴜᴛᴏᴍᴀᴛɪᴄᴀʟʟʏ — ɴᴏ ᴇxᴛᴇʀɴᴀʟ sɪᴛᴇ ɴᴇᴇᴅᴇᴅ!
 ᴡᴀɪᴛ 60s ᴛᴏ ᴄᴀɴᴄᴇʟ.__"""
     await query.message.edit_text(msg)
     try:
         res = await client.listen(user_id=query.from_user.id, filters=(filters.text | filters.photo), timeout=60)
         if res.photo:
-            # Download and upload to Telegraph
-            await query.message.edit_text(f"<blockquote>✦ ᴜᴘʟᴏᴀᴅɪɴɢ ᴛᴏ Telegraph...</blockquote>")
-            loc = await res.download()
-            try:
-                url = await upload_to_telegraph(loc)
-            finally:
-                try:
-                    os.remove(loc)
-                except Exception:
-                    pass
-            client.messages[key] = url
-            await client.mongodb.update_message_setting(key, url, client.bot_id)
+            # Forward/copy photo to DB channel to obtain a permanent file_id
+            db_channel = getattr(client, 'primary_db_channel', None) or getattr(client, 'db', None)
+            if not db_channel:
+                return await query.message.edit_text(
+                    "**✗ ɴᴏ ᴅʙ ᴄʜᴀɴɴᴇʟ ᴄᴏɴғɪɢᴜʀᴇᴅ!** sᴇᴛ ᴀ ᴅʙ ᴄʜᴀɴɴᴇʟ ꜰɪʀsᴛ.",
+                    reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('◂ ʙᴀᴄᴋ', 'photos')]]))
+            await query.message.edit_text("<blockquote>✦ sᴀᴠɪɴɢ ᴘʜᴏᴛᴏ...</blockquote>")
+            # Copy to DB channel — gives us a stable file_id independent of the sender
+            sent = await client.copy_message(
+                chat_id=db_channel,
+                from_chat_id=res.chat.id,
+                message_id=res.id
+            )
+            file_id = sent.photo.file_id
+            client.messages[key] = file_id
+            await client.mongodb.update_message_setting(key, file_id, client.bot_id)
             return await query.message.edit_text(
-                f"**✓ {label} ᴜᴘᴅᴀᴛᴇᴅ!**\n\n›› **Telegraph URL:**\n<code>{url}</code>",
+                f"**✓ {label} ᴜᴘᴅᴀᴛᴇᴅ!**\n\n›› **ꜰɪʟᴇ ɪᴅ sᴀᴠᴇᴅ ᴛᴏ ᴅʙ ᴄʜᴀɴɴᴇʟ ✓**",
                 reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('◂ ʙᴀᴄᴋ', 'photos')]]))
         elif res.text and (res.text.startswith('https://') or res.text.startswith('http://')):
             client.messages[key] = res.text
