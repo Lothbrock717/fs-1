@@ -1,13 +1,6 @@
 #!/bin/bash
+cp /config.py /app/config.py
 cd /app
-
-find /app -name "*.session-journal" -delete 2>/dev/null
-find /app -name "*.session-wal" -delete 2>/dev/null
-
-git fetch origin Yato
-git reset --hard origin/Yato
-
-mkdir -p /app/downloads
-
 pip install -r requirements.txt -q
+cp /config.py /app/config.py
 python main.py
