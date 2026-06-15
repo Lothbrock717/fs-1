@@ -2,6 +2,28 @@ from pyrogram import Client, filters
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from pyrogram.errors.pyromod import ListenerTimeout
 from config import OWNER_ID
+import os
+import aiohttp
+import aiofiles
+
+#===============================================================#
+
+async def upload_to_telegraph(file_path: str) -> str:
+    """Upload a local image file to Telegraph and return the graph.org URL."""
+    url = "https://telegra.ph/upload"
+    async with aiofiles.open(file_path, 'rb') as f:
+        data = await f.read()
+    ext = os.path.splitext(file_path)[1].lower() or '.jpg'
+    mime_map = {'.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png', '.gif': 'image/gif', '.webp': 'image/webp'}
+    mime = mime_map.get(ext, 'image/jpeg')
+    async with aiohttp.ClientSession() as session:
+        form = aiohttp.FormData()
+        form.add_field('file', data, filename=f'photo{ext}', content_type=mime)
+        async with session.post(url, data=form) as resp:
+            result = await resp.json()
+            if isinstance(result, list) and result:
+                return "https://graph.org" + result[0]['src']
+            raise ValueError(f"Telegraph upload failed: {result}")
 
 #===============================================================#
 
@@ -343,22 +365,32 @@ async def photos(client, query):
     if not query.from_user.id in client.admins:
         return await query.answer('✗ ᴏɴʟʏ ᴀᴅᴍɪɴs ᴄᴀɴ ᴜsᴇ ᴛʜɪs!', show_alert=True)
     await query.answer()
-    msg = f"""<blockquote>**Photo Settings:**</blockquote>
-**Start Photo:** `{client.messages.get("START_PHOTO", "None")}`
-**Force Sub Photo:** `{client.messages.get('FSUB_PHOTO', 'None')}`
+    start_photo = client.messages.get("START_PHOTO", "") or "ɴᴏᴛ sᴇᴛ"
+    fsub_photo  = client.messages.get("FSUB_PHOTO", "") or "ɴᴏᴛ sᴇᴛ"
+    short_pic   = client.messages.get("SHORT_PIC", "") or "ɴᴏᴛ sᴇᴛ"
+    msg = f"""<blockquote>✦ ᴘʜᴏᴛᴏ sᴇᴛᴛɪɴɢs</blockquote>
+›› **ꜱᴛᴀʀᴛ ᴘʜᴏᴛᴏ:**
+<code>{start_photo}</code>
+›› **ꜰꜱᴜʙ ᴘʜᴏᴛᴏ:**
+<code>{fsub_photo}</code>
+›› **ꜱʜᴏʀᴛ ʟɪɴᴋ ᴘʜᴏᴛᴏ:**
+<code>{short_pic}</code>
 
-__Use the buttons below to manage photos!__
-"""
+__sᴇɴᴅ ᴀ ᴘʜᴏᴛᴏ ᴅɪʀᴇᴄᴛʟʏ — ʙᴏᴛ ᴜᴘʟᴏᴀᴅs ᴛᴏ Telegraph & sᴀᴠᴇs ᴜʀʟ!__"""
     reply_markup = InlineKeyboardMarkup([
         [
-            InlineKeyboardButton(('ꜱᴇᴛ' if not client.messages.get("START_PHOTO") else 'ᴄʜᴀɴɢᴇ') + '\nꜱᴛᴀʀᴛ ᴘʜᴏᴛᴏ', callback_data='add_start_photo'),
-            InlineKeyboardButton(('ꜱᴇᴛ' if not client.messages.get("FSUB_PHOTO") else 'ᴄʜᴀɴɢᴇ') + '\nꜰꜱᴜʙ ᴘʜᴏᴛᴏ', callback_data='add_fsub_photo')
+            InlineKeyboardButton(('ꜱᴇᴛ' if not client.messages.get("START_PHOTO") else 'ᴄʜᴀɴɢᴇ') + ' ꜱᴛᴀʀᴛ ᴘʜᴏᴛᴏ', callback_data='add_start_photo'),
+            InlineKeyboardButton(('ꜱᴇᴛ' if not client.messages.get("FSUB_PHOTO") else 'ᴄʜᴀɴɢᴇ') + ' ꜰꜱᴜʙ ᴘʜᴏᴛᴏ', callback_data='add_fsub_photo'),
         ],
         [
-            InlineKeyboardButton('ʀᴇᴍᴏᴠᴇ\nꜱᴛᴀʀᴛ ᴘʜᴏᴛᴏ', callback_data='rm_start_photo'),
-            InlineKeyboardButton('ʀᴇᴍᴏᴠᴇ\nꜰꜱᴜʙ ᴘʜᴏᴛᴏ', callback_data='rm_fsub_photo')
+            InlineKeyboardButton(('ꜱᴇᴛ' if not client.messages.get("SHORT_PIC") else 'ᴄʜᴀɴɢᴇ') + ' ꜱʜᴏʀᴛ ᴘʜᴏᴛᴏ', callback_data='add_short_pic'),
         ],
-        [InlineKeyboardButton('◂ ʙᴀᴄᴋ', callback_data='settings')]
+        [
+            InlineKeyboardButton('ʀᴇᴍᴏᴠᴇ ꜱᴛᴀʀᴛ', callback_data='rm_start_photo'),
+            InlineKeyboardButton('ʀᴇᴍᴏᴠᴇ ꜰꜱᴜʙ', callback_data='rm_fsub_photo'),
+            InlineKeyboardButton('ʀᴇᴍᴏᴠᴇ ꜱʜᴏʀᴛ', callback_data='rm_short_pic'),
+        ],
+        [InlineKeyboardButton('◂ ʙᴀᴄᴋ', callback_data='settings_page_2')]
     ])
     await query.message.edit_text(msg, reply_markup=reply_markup)
 
@@ -412,7 +444,7 @@ async def rm_start_photo(client, query):
         return await query.answer('✗ ᴏɴʟʏ ᴀᴅᴍɪɴs ᴄᴀɴ ᴜsᴇ ᴛʜɪs!', show_alert=True)
     client.messages['START_PHOTO'] = ''
     await client.mongodb.update_message_setting('START_PHOTO', '', client.bot_id)
-    await query.answer()
+    await query.answer('✓ ꜱᴛᴀʀᴛ ᴘʜᴏᴛᴏ ʀᴇᴍᴏᴠᴇᴅ!', show_alert=True)
     await photos(client, query)
 
 #===============================================================#
@@ -423,8 +455,69 @@ async def rm_fsub_photo(client, query):
         return await query.answer('✗ ᴏɴʟʏ ᴀᴅᴍɪɴs ᴄᴀɴ ᴜsᴇ ᴛʜɪs!', show_alert=True)
     client.messages['FSUB_PHOTO'] = ''
     await client.mongodb.update_message_setting('FSUB_PHOTO', '', client.bot_id)
-    await query.answer()
+    await query.answer('✓ ꜰꜱᴜʙ ᴘʜᴏᴛᴏ ʀᴇᴍᴏᴠᴇᴅ!', show_alert=True)
     await photos(client, query)
+
+#===============================================================#
+
+@Client.on_callback_query(filters.regex('^rm_short_pic$'))
+async def rm_short_pic(client, query):
+    if not query.from_user.id in client.admins:
+        return await query.answer('✗ ᴏɴʟʏ ᴀᴅᴍɪɴs ᴄᴀɴ ᴜsᴇ ᴛʜɪs!', show_alert=True)
+    client.messages['SHORT_PIC'] = ''
+    await client.mongodb.update_message_setting('SHORT_PIC', '', client.bot_id)
+    await query.answer('✓ ꜱʜᴏʀᴛ ᴘʜᴏᴛᴏ ʀᴇᴍᴏᴠᴇᴅ!', show_alert=True)
+    await photos(client, query)
+
+#===============================================================#
+
+async def _handle_photo_upload(client, query, key: str, label: str):
+    """Shared logic: accept photo or URL, upload photo to Telegraph, save URL to DB."""
+    current = client.messages.get(key, '') or 'ɴᴏᴛ sᴇᴛ'
+    msg = f"""<blockquote>✦ ᴄʜᴀɴɢᴇ {label}</blockquote>
+›› **ᴄᴜʀʀᴇɴᴛ:**
+<code>{current}</code>
+
+__sᴇɴᴅ ᴀ ᴘʜᴏᴛᴏ ᴅɪʀᴇᴄᴛʟʏ ᴏʀ ᴀ https:// ᴜʀʟ.
+ʙᴏᴛ ᴡɪʟʟ ᴜᴘʟᴏᴀᴅ ᴛᴏ Telegraph ᴀɴᴅ sᴀᴠᴇ ᴛʜᴇ ᴜʀʟ ᴀᴜᴛᴏᴍᴀᴛɪᴄᴀʟʟʏ!
+ᴡᴀɪᴛ 60s ᴛᴏ ᴄᴀɴᴄᴇʟ.__"""
+    await query.message.edit_text(msg)
+    try:
+        res = await client.listen(user_id=query.from_user.id, filters=(filters.text | filters.photo), timeout=60)
+        if res.photo:
+            # Download and upload to Telegraph
+            await query.message.edit_text(f"<blockquote>✦ ᴜᴘʟᴏᴀᴅɪɴɢ ᴛᴏ Telegraph...</blockquote>")
+            loc = await res.download()
+            try:
+                url = await upload_to_telegraph(loc)
+            finally:
+                try:
+                    os.remove(loc)
+                except Exception:
+                    pass
+            client.messages[key] = url
+            await client.mongodb.update_message_setting(key, url, client.bot_id)
+            return await query.message.edit_text(
+                f"**✓ {label} ᴜᴘᴅᴀᴛᴇᴅ!**\n\n›› **Telegraph URL:**\n<code>{url}</code>",
+                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('◂ ʙᴀᴄᴋ', 'photos')]]))
+        elif res.text and (res.text.startswith('https://') or res.text.startswith('http://')):
+            client.messages[key] = res.text
+            await client.mongodb.update_message_setting(key, res.text, client.bot_id)
+            return await query.message.edit_text(
+                f"**✓ {label} ᴜʀʟ sᴀᴠᴇᴅ!**\n\n›› <code>{res.text}</code>",
+                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('◂ ʙᴀᴄᴋ', 'photos')]]))
+        else:
+            return await query.message.edit_text(
+                "**✗ ɪɴᴠᴀʟɪᴅ!** sᴇɴᴅ ᴀ ᴘʜᴏᴛᴏ ᴏʀ https:// ᴜʀʟ.",
+                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('◂ ʙᴀᴄᴋ', 'photos')]]))
+    except ListenerTimeout:
+        return await query.message.edit_text(
+            "**✗ ᴛɪᴍᴇᴏᴜᴛ, ᴛʀʏ ᴀɢᴀɪɴ!**",
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('◂ ʙᴀᴄᴋ', 'photos')]]))
+    except Exception as e:
+        return await query.message.edit_text(
+            f"**✗ ᴇʀʀᴏʀ:** `{e}`",
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('◂ ʙᴀᴄᴋ', 'photos')]]))
 
 #===============================================================#
 
@@ -433,31 +526,7 @@ async def add_start_photo(client, query):
     if not query.from_user.id in client.admins:
         return await query.answer('✗ ᴏɴʟʏ ᴀᴅᴍɪɴs ᴄᴀɴ ᴜsᴇ ᴛʜɪs!', show_alert=True)
     await query.answer()
-    msg = f"""<blockquote>**Change Start Image:**</blockquote>
-**Current Start Image:** `{client.messages.get('START_PHOTO', '')}`
-
-__Send the new image or a URL (must start with https://), or wait 60s to cancel!__
-"""
-    await query.message.edit_text(msg)
-    try:
-        res = await client.listen(user_id=query.from_user.id, filters=(filters.text | filters.photo), timeout=60)
-        if res.text and (res.text.startswith('https://') or res.text.startswith('http://')):
-            client.messages['START_PHOTO'] = res.text
-            await client.mongodb.update_message_setting('START_PHOTO', res.text, client.bot_id)
-            return await query.message.edit_text("**✅ Start photo link updated!**",
-                                                 reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('◂ ʙᴀᴄᴋ', 'photos')]]))
-        elif res.photo:
-            loc = await res.download()
-            client.messages['START_PHOTO'] = loc
-            await client.mongodb.update_message_setting('START_PHOTO', loc, client.bot_id)
-            return await query.message.edit_text("**✅ Start photo updated!**",
-                                                 reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('◂ ʙᴀᴄᴋ', 'photos')]]))
-        else:
-            return await query.message.edit_text("**❌ Invalid format! Send a photo or a https:// link.**",
-                                                 reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('◂ ʙᴀᴄᴋ', 'photos')]]))
-    except ListenerTimeout:
-        return await query.message.edit_text("**Timeout, try again!**",
-                                             reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('◂ ʙᴀᴄᴋ', 'photos')]]))
+    await _handle_photo_upload(client, query, 'START_PHOTO', 'ꜱᴛᴀʀᴛ ᴘʜᴏᴛᴏ')
 
 #===============================================================#
 
@@ -466,31 +535,16 @@ async def add_fsub_photo(client, query):
     if not query.from_user.id in client.admins:
         return await query.answer('✗ ᴏɴʟʏ ᴀᴅᴍɪɴs ᴄᴀɴ ᴜsᴇ ᴛʜɪs!', show_alert=True)
     await query.answer()
-    msg = f"""<blockquote>**Change Force Sub Image:**</blockquote>
-**Current Force Sub Image:** `{client.messages.get('FSUB_PHOTO', '')}`
+    await _handle_photo_upload(client, query, 'FSUB_PHOTO', 'ꜰꜱᴜʙ ᴘʜᴏᴛᴏ')
 
-__Send the new image or a URL (must start with https://), or wait 60s to cancel!__
-"""
-    await query.message.edit_text(msg)
-    try:
-        res = await client.listen(user_id=query.from_user.id, filters=(filters.text | filters.photo), timeout=60)
-        if res.text and (res.text.startswith('https://') or res.text.startswith('http://')):
-            client.messages['FSUB_PHOTO'] = res.text
-            await client.mongodb.update_message_setting('FSUB_PHOTO', res.text, client.bot_id)
-            return await query.message.edit_text("**✅ FSub photo link updated!**",
-                                                 reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('◂ ʙᴀᴄᴋ', 'photos')]]))
-        elif res.photo:
-            loc = await res.download()
-            client.messages['FSUB_PHOTO'] = loc
-            await client.mongodb.update_message_setting('FSUB_PHOTO', loc, client.bot_id)
-            return await query.message.edit_text("**✅ FSub photo updated!**",
-                                                 reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('◂ ʙᴀᴄᴋ', 'photos')]]))
-        else:
-            return await query.message.edit_text("**❌ Invalid format! Send a photo or a https:// link.**",
-                                                 reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('◂ ʙᴀᴄᴋ', 'photos')]]))
-    except ListenerTimeout:
-        return await query.message.edit_text("**Timeout, try again!**",
-                                             reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('◂ ʙᴀᴄᴋ', 'photos')]]))
+#===============================================================#
+
+@Client.on_callback_query(filters.regex("^add_short_pic$"))
+async def add_short_pic(client, query):
+    if not query.from_user.id in client.admins:
+        return await query.answer('✗ ᴏɴʟʏ ᴀᴅᴍɪɴs ᴄᴀɴ ᴜsᴇ ᴛʜɪs!', show_alert=True)
+    await query.answer()
+    await _handle_photo_upload(client, query, 'SHORT_PIC', 'ꜱʜᴏʀᴛ ʟɪɴᴋ ᴘʜᴏᴛᴏ')
 
 #===============================================================#
 
