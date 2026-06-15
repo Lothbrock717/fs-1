@@ -7,4 +7,5 @@ motor
 markdown
 asyncio
 TgCrypto
-requestsaiofiles
+requests
+aiofiles
