@@ -15,8 +15,8 @@ SHORT_TUT = ""
 # Bot Configuration
 SESSION = ""
 TOKEN = ""
-API_ID = "26444821"
-API_HASH = "a58efd1d6483e3f0d5b2757d9f665c24"
+API_ID = ""
+API_HASH = ""
 WORKERS = 10
 
 DB_URI = ""
