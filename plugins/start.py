@@ -4,7 +4,7 @@ from pyrogram.enums import ParseMode
 from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
 import humanize
 from config import MSG_EFFECT, OWNER_ID
-from plugins.shortner import get_short
+from plugins.shortner import get_short, get_active_shortener
 from helper.helper_func import force_sub, batch_auto_del_notification, _track_task
 from helper.helper_func import str_to_b64, b64_to_str
 import asyncio
@@ -177,7 +177,8 @@ async def start_command(client: Client, message: Message):
             if short_link and short_link.startswith("http"):
                 short_photo = client.messages.get("SHORT_PIC", "")
                 short_caption = client.messages.get("SHORT_MSG", "")
-                tutorial_link = getattr(client, 'tutorial_link', "") or "https://t.me/How_to_Download_7x/26"
+                active_shortener_cfg = get_active_shortener(client) or {}
+                tutorial_link = active_shortener_cfg.get('tutorial_link', "") or "https://t.me/How_to_Download_7x/26"
 
                 sent = await client.send_photo(
                     chat_id=message.chat.id,
