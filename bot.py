@@ -122,19 +122,45 @@ class Bot(Client):
         except Exception as e:
             self.LOGGER(__name__, self.name).warning(f"Error loading DB channels: {e}")
 
-        # Load shortner settings from database
+        # Load shortner settings from database (multi-shortner support)
         try:
             shortner_settings = await self.mongodb.get_shortner_settings(self.bot_id)
-            self.short_url = shortner_settings.get('short_url', SHORT_URL)
-            self.short_api = shortner_settings.get('short_api', SHORT_API)
-            self.tutorial_link = shortner_settings.get('tutorial_link', SHORT_TUT)
+            shorteners = shortner_settings.get('shorteners', {})
+            active = shortner_settings.get('active')
+
+            # Migrate legacy single-shortner config into the new multi-shortner format
+            if not shorteners:
+                legacy_url = shortner_settings.get('short_url', SHORT_URL)
+                legacy_api = shortner_settings.get('short_api', SHORT_API)
+                if legacy_url and legacy_api:
+                    shorteners = {
+                        'default': {
+                            'url': legacy_url,
+                            'api': legacy_api,
+                            'tutorial_link': shortner_settings.get('tutorial_link', SHORT_TUT)
+                        }
+                    }
+                    active = 'default'
+                    await self.mongodb.update_shortner_setting('shorteners', shorteners, self.bot_id)
+                    await self.mongodb.update_shortner_setting('active', active, self.bot_id)
+
+            self.shorteners = shorteners
+            self.active_shortener = active if active in shorteners else (next(iter(shorteners), None))
             self.shortner_enabled = shortner_settings.get('enabled', True)
+
+            # Mirror attrs for backward compatibility with plugins that read short_url/short_api/tutorial_link directly
+            active_cfg = shorteners.get(self.active_shortener, {}) if self.active_shortener else {}
+            self.short_url = active_cfg.get('url', SHORT_URL)
+            self.short_api = active_cfg.get('api', SHORT_API)
+            self.tutorial_link = active_cfg.get('tutorial_link', SHORT_TUT)
         except Exception as e:
             self.LOGGER(__name__, self.name).warning(f"Error loading shortner settings: {e}")
+            self.shorteners = {}
+            self.active_shortener = None
+            self.shortner_enabled = True
             self.short_url = SHORT_URL
             self.short_api = SHORT_API
             self.tutorial_link = SHORT_TUT
-            self.shortner_enabled = True
 
         # Load file prefix, caption template and custom buttons from database
         try:
