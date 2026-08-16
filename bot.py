@@ -55,6 +55,13 @@ class Bot(Client):
         self.uptime = datetime.now()
         self.bot_id = usr_bot_me.username  # Unique namespace for this bot in shared DB
 
+        # Create TTL indexes once per DB (safe/no-op if they already exist) so
+        # abandoned shortner tokens auto-expire instead of growing forever.
+        try:
+            await self.mongodb.ensure_indexes()
+        except Exception as e:
+            self.LOGGER(__name__, self.name).warning(f"Error ensuring DB indexes: {e}")
+
         # Load fsub channels from static config first
         if len(self.fsub) > 0:
             for channel in self.fsub:
@@ -161,6 +168,16 @@ class Bot(Client):
             self.short_url = SHORT_URL
             self.short_api = SHORT_API
             self.tutorial_link = SHORT_TUT
+
+        # Load auto-mode shortner settings (separate ordered list, cycles per-user)
+        try:
+            auto_settings = await self.mongodb.get_auto_shortner_settings(self.bot_id)
+            self.auto_shorteners = auto_settings.get('shorteners', [])
+            self.auto_shortener_enabled = auto_settings.get('enabled', False)
+        except Exception as e:
+            self.LOGGER(__name__, self.name).warning(f"Error loading auto shortner settings: {e}")
+            self.auto_shorteners = []
+            self.auto_shortener_enabled = False
 
         # Load file prefix, caption template and custom buttons from database
         try:
