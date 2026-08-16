@@ -20,8 +20,22 @@ class MongoDB:
             instance.premium_users = instance.db['pros']
             instance.fsub_status = instance.db['fsub_status']  # New collection for fsub status tracking
             instance.request_sub = instance.db['request_sub']  # New collection for join request tracking
+            instance._indexes_ready = False
             cls._instances[(uri, db_name)] = instance
         return cls._instances[(uri, db_name)]
+
+    async def ensure_indexes(self):
+        """Create TTL indexes so abandoned shortner tokens auto-expire instead
+        of accumulating forever. Safe to call every startup — creating an
+        index that already exists is a no-op."""
+        if self._indexes_ready:
+            return
+        try:
+            await self.db["short_tokens"].create_index("createdAt", expireAfterSeconds=86400)
+            await self.db["auto_short_tokens"].create_index("createdAt", expireAfterSeconds=86400)
+        except Exception:
+            pass  # non-fatal — worst case tokens just aren't auto-expired yet
+        self._indexes_ready = True
 
     async def set_channels(self, channels: list[int]):
         await self.user_data.update_one(
@@ -539,6 +553,9 @@ class MongoDB:
     def _shortner_id(self, bot_id: str) -> str:
         return f"shortner_settings_{bot_id}"
 
+    def _auto_shortner_id(self, bot_id: str) -> str:
+        return f"auto_shortner_settings_{bot_id}"
+
     async def set_bot_settings(self, settings_data: dict, bot_id: str = "default"):
         """Store bot settings to database for persistence across bot restarts"""
         await self.user_data.update_one(
@@ -733,6 +750,84 @@ class MongoDB:
     async def set_shortner_status(self, enabled: bool, bot_id: str = "default"):
         await self.update_shortner_setting('enabled', enabled, bot_id)
 
+    # ✅ AUTO SHORTNER SETTINGS (namespaced per bot)
+    # Separate ordered list of shorteners used only by "auto mode" — cycles
+    # through them one at a time per-user. Independent from the regular
+    # multi-shortner list/active shortner above.
+
+    async def set_auto_shortner_settings(self, data: dict, bot_id: str = "default"):
+        await self.user_data.update_one(
+            {"_id": self._auto_shortner_id(bot_id)},
+            {"$set": {"settings": data}},
+            upsert=True
+        )
+
+    async def get_auto_shortner_settings(self, bot_id: str = "default") -> dict:
+        data = await self.user_data.find_one({"_id": self._auto_shortner_id(bot_id)})
+        return data.get("settings", {}) if data else {}
+
+    async def update_auto_shortner_setting(self, key: str, value, bot_id: str = "default"):
+        current = await self.get_auto_shortner_settings(bot_id)
+        current[key] = value
+        await self.set_auto_shortner_settings(current, bot_id)
+
+    # ── Auto-shortener per-user cycle progress ──────────────────────────────
+    # Deliberately GLOBAL (not namespaced by bot_id) and keyed only by
+    # user_id, so a user's position in the cycle is shared across every bot
+    # that shares this database — solving link #1 on one bot means the next
+    # bot shows link #2 for that same user.
+    #
+    # "position" only ever increases; each bot maps it onto its own auto
+    # list with `position % len(list)`, so the cycle naturally wraps per
+    # bot even if different bots configure different numbers of links.
+    # The daily reset (12 AM IST) is derived purely from comparing
+    # `last_active_date` to today — no cron/scheduler needed, so it
+    # survives restarts.
+
+    async def get_auto_progress(self, user_id: int) -> dict:
+        doc = await self.db["auto_shortener_progress"].find_one({"_id": user_id})
+        return doc or {}
+
+    async def set_auto_progress(self, user_id: int, position: int, date_str: str):
+        await self.db["auto_shortener_progress"].update_one(
+            {"_id": user_id},
+            {"$set": {"position": position, "last_active_date": date_str}},
+            upsert=True
+        )
+
+    async def reset_auto_progress(self, user_id: int):
+        await self.db["auto_shortener_progress"].delete_one({"_id": user_id})
+
+    # ── Auto-shortener one-time tokens ──────────────────────────────────────
+    # Like the regular short-link tokens, but also remember which user and
+    # which cycle position/date they were issued for, so that when the user
+    # solves the link we know whose progress to advance and to what.
+
+    async def store_auto_token(self, token: str, payload: str, user_id: int, position: int, date_str: str):
+        await self.db["auto_short_tokens"].update_one(
+            {"_id": token},
+            {"$set": {
+                "payload": payload,
+                "user_id": user_id,
+                "position": position,
+                "date": date_str,
+            }, "$setOnInsert": {"createdAt": datetime.utcnow()}},
+            upsert=True
+        )
+
+    async def get_auto_token_for_user(self, user_id: int, payload: str, date_str: str, position: int) -> str | None:
+        """Return an existing not-yet-solved auto token for this exact user/file/day/position, if any."""
+        doc = await self.db["auto_short_tokens"].find_one({
+            "user_id": user_id, "payload": payload, "date": date_str, "position": position
+        })
+        return doc["_id"] if doc else None
+
+    async def get_auto_token_data(self, token: str) -> dict | None:
+        return await self.db["auto_short_tokens"].find_one({"_id": token})
+
+    async def delete_auto_token(self, token: str):
+        await self.db["auto_short_tokens"].delete_one({"_id": token})
+
     # ✅ BATCH SETTINGS FUNCTIONS
 
     async def save_all_settings(self, bot_settings: dict, messages: dict, admins: list, bot_id: str = "default"):
@@ -778,7 +873,7 @@ class MongoDB:
             {"_id": token},
             {"$set": {
                 "payload": payload,
-            }},
+            }, "$setOnInsert": {"createdAt": datetime.utcnow()}},
             upsert=True
         )
 
