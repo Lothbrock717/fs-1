@@ -798,28 +798,26 @@ class MongoDB:
     async def reset_auto_progress(self, user_id: int):
         await self.db["auto_shortener_progress"].delete_one({"_id": user_id})
 
-    # ── Auto-shortener one-time tokens ──────────────────────────────────────
-    # Like the regular short-link tokens, but also remember which user and
-    # which cycle position/date they were issued for, so that when the user
-    # solves the link we know whose progress to advance and to what.
+    # ── Auto-shortener tokens ────────────────────────────────────────────────
+    # Mirrors the regular short-link tokens: ONE shared link per (file,
+    # position) — reused by every user, exactly like the regular shortener
+    # reuses one link per file. Not tied to a specific user, so the DB
+    # footprint scales with the number of distinct files requested, not with
+    # the number of users.
 
-    async def store_auto_token(self, token: str, payload: str, user_id: int, position: int, date_str: str):
+    async def store_auto_token(self, token: str, payload: str, position: int):
         await self.db["auto_short_tokens"].update_one(
             {"_id": token},
             {"$set": {
                 "payload": payload,
-                "user_id": user_id,
                 "position": position,
-                "date": date_str,
             }, "$setOnInsert": {"createdAt": datetime.utcnow()}},
             upsert=True
         )
 
-    async def get_auto_token_for_user(self, user_id: int, payload: str, date_str: str, position: int) -> str | None:
-        """Return an existing not-yet-solved auto token for this exact user/file/day/position, if any."""
-        doc = await self.db["auto_short_tokens"].find_one({
-            "user_id": user_id, "payload": payload, "date": date_str, "position": position
-        })
+    async def get_auto_token_for_payload(self, payload: str, position: int) -> str | None:
+        """Return the existing shared token for this file+position, if one exists."""
+        doc = await self.db["auto_short_tokens"].find_one({"payload": payload, "position": position})
         return doc["_id"] if doc else None
 
     async def get_auto_token_data(self, token: str) -> dict | None:
@@ -827,6 +825,7 @@ class MongoDB:
 
     async def delete_auto_token(self, token: str):
         await self.db["auto_short_tokens"].delete_one({"_id": token})
+
 
     # ✅ BATCH SETTINGS FUNCTIONS
 
