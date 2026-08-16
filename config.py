@@ -45,7 +45,7 @@ PROTECT = False
 # Messages Configuration
 MESSAGES = {
     "START": "<b>›› ʜᴇʏ!!, {first} ~\nI Aᴍ A Pᴇʀᴍᴀɴᴇɴᴛ Fɪʟᴇ Sᴛᴏʀᴇ Bᴏᴛ Aɴᴅ Mᴀɴʏ Aᴍᴀᴢɪɴɢ Aᴅᴠᴀɴᴄᴇ Fᴇᴀᴛᴜʀᴇ Aɴᴅ Usᴇʀs Cᴀɴ Aᴄᴄᴇss Sᴛᴏʀᴇᴅ Mᴇssᴀɢᴇs Bʏ Usɪɴɢ A Sʜᴀʀᴇᴀʙʟᴇ Lɪɴᴋ Gɪᴠᴇɴ Bʏ @F2_Linkz!!! Tᴏ Kɴᴏᴡ Mᴏʀᴇ Cʟɪᴄᴋ Hᴇʟᴘ Bᴜᴛᴛᴏɴ...</b>",
-    "FSUB": "<b><blockquote>›› ʜᴇʏ ×</blockquote>\n  ʏᴏᴜʀ ғɪʟᴇ ɪs ʀᴇᴀᴅʏ ‼️ ʟᴏᴏᴋs ʟɪᴋᴇ ʏᴏᴜ ʜᴀᴠᴇɴ'ᴛ sᴜʙsᴄʀɪʙᴇᴅ ᴛᴏ ᴏᴜʀ ᴄʜᴀɴɴᴇʟs ʏᴇᴛ, sᴜʙsᴄʀɪʙᴇ ɴᴏᴡ ᴛᴏ ɢᴇᴛ ʏᴏᴜʀ ғɪʟᴇs</b>",
+    "FSUB": "<b><blockquote>›› ʜᴇʏ ×</blockquote>\n  ʏᴏᴜʀ ғɪʟᴇ ɪs ʀᴇᴀᴅʏ ‼️ ʟᴏᴏᴋs ʟɪᴋᴇ ʏᴏᴜ ʜᴀᴠᴇɴ'ᴛ sᴜʙsᴄʀɪʙᴇᴅ ᴛᴏ ᴏᴜʀ ᴄʜᴀɴɴᴇʟs ʏᴇᴛ, sᴜʙsᴄʀɪʙᴇ ɴᴏᴡ ᴛᴏ ɢᴇᴛ ʏᴏᴜʀ ғɪʟᴇs\n\nᴊᴏɪɴ ᴛʜᴇ ʙᴇʟᴏᴡ ᴄʜᴀɴɴᴇʟs ᴀɴᴅ ᴄʟɪᴄᴋ ᴛʀʏ ᴀɢᴀɪɴ</b>",
     "ABOUT": "<b>›› ғᴏʀ ᴍᴏʀᴇ: @F2_Linkz \n›› ᴜᴘᴅᴀᴛᴇs ᴄʜᴀɴɴᴇʟ: <a href='https://t.me/+r-ez-AY7i3djNmM1'>Cʟɪᴄᴋ ʜᴇʀᴇ</a> \n›› sᴜᴘᴘᴏʀᴛ: <a href='https://t.me/+V7zUi7O_DkEyNGZl'>Cʟɪᴄᴋ ʜᴇʀᴇ</a> \n›› ᴏᴡɴᴇʀ: @F2_Adminn</b>",
     "REPLY": "<b>For More Join - @F2_Linkz</b>",
     "SHORT_MSG": "<b>📊 ʜᴇʏ {}, \n\n‼️ ɢᴇᴛ ᴀʟʟ ꜰɪʟᴇꜱ ɪɴ ᴀ ꜱɪɴɢʟᴇ ʟɪɴᴋ ‼️\n\n ⌯ ʏᴏᴜʀ ʟɪɴᴋ ɪꜱ ʀᴇᴀᴅʏ, ᴋɪɴᴅʟʏ ᴄʟɪᴄᴋ ᴏɴ ᴏᴘᴇɴ ʟɪɴᴋ ʙᴜᴛᴛᴏɴ..</b>",
