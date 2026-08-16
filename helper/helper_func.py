@@ -6,11 +6,22 @@ from pyrogram import filters, Client
 from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
 from pyrogram.enums import ChatMemberStatus
 from pyrogram.errors import UserNotParticipant, Forbidden, PeerIdInvalid, ChatAdminRequired, FloodWait
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pyrogram import errors
 
 # Task registry — prevents background tasks from accumulating over weeks
 _background_tasks: set = set()
+
+#===============================================================#
+# IST (India) date helper — used by the auto-shortener cycle so it
+# resets at 12:00 AM India time regardless of the server's own timezone.
+#===============================================================#
+
+IST = timezone(timedelta(hours=5, minutes=30))
+
+def ist_today_str() -> str:
+    """Return today's date in India time as 'YYYY-MM-DD'."""
+    return datetime.now(IST).strftime('%Y-%m-%d')
 
 def _track_task(coro):
     """Create a tracked task that auto-removes itself when done."""
