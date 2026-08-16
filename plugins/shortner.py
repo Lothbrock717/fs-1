@@ -470,6 +470,7 @@ async def auto_shortner_panel(client, query_or_message):
     reply_markup = InlineKeyboardMarkup([
         [InlineKeyboardButton(f'• {toggle_text} ᴀᴜᴛᴏ ᴍᴏᴅᴇ •', 'toggle_auto_shortner')],
         [InlineKeyboardButton('• ᴀᴅᴅ ʟɪɴᴋ •', 'add_auto_shortner'), InlineKeyboardButton('• ʀᴇᴍᴏᴠᴇ ʟɪɴᴋ •', 'rm_auto_shortner')],
+        [InlineKeyboardButton('• ᴇᴅɪᴛ ʟɪɴᴋ •', 'edit_auto_shortner'), InlineKeyboardButton('• ʀᴇᴏʀᴅᴇʀ ʟɪɴᴋ •', 'move_auto_shortner')],
         [InlineKeyboardButton('◂ ʙᴀᴄᴋ', 'shortner')]
     ])
 
@@ -587,6 +588,123 @@ __ꜱᴇɴᴅ ᴛʜᴇ ɴᴜᴍʙᴇʀ ᴏꜰ ᴛʜᴇ ʟɪɴᴋ ᴛᴏ ʀᴇᴍ
         await save_auto_shorteners(client)
         await query.message.edit_text(f"**✓ ʀᴇᴍᴏᴠᴇᴅ `{removed.get('url', '?')}`!**\n**ʀᴇᴍᴀɪɴɪɴɢ:** `{len(client.auto_shorteners)}`",
                                       reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('◂ ʙᴀᴄᴋ', 'auto_shortner')]]))
+    except ListenerTimeout:
+        await query.message.edit_text("**⏰ ᴛɪᴍᴇᴏᴜᴛ! ᴛʀʏ ᴀɢᴀɪɴ.**",
+                                    reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('◂ ʙᴀᴄᴋ', 'auto_shortner')]]))
+
+#===============================================================#
+
+@Client.on_callback_query(filters.regex("^edit_auto_shortner$"))
+async def edit_auto_shortner(client: Client, query: CallbackQuery):
+    if not query.from_user.id in client.admins:
+        return await query.answer('❌ ᴏɴʟʏ ᴀᴅᴍɪɴꜱ ᴄᴀɴ ᴜꜱᴇ ᴛʜɪꜱ!', show_alert=True)
+
+    await query.answer()
+
+    auto_list = getattr(client, 'auto_shorteners', []) or []
+    if not auto_list:
+        return await query.message.edit_text("**✗ ɴᴏ ᴀᴜᴛᴏ ʟɪɴᴋs ᴛᴏ ᴇᴅɪᴛ!**",
+                                             reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('◂ ʙᴀᴄᴋ', 'auto_shortner')]]))
+
+    listing = "\n".join(f"**{i}.** `{cfg.get('url', '?')}`" for i, cfg in enumerate(auto_list, start=1))
+    msg = f"""<blockquote>**ᴇᴅɪᴛ ᴀᴜᴛᴏ ʟɪɴᴋ:**</blockquote>
+{listing}
+
+__ꜱᴇɴᴅ ᴛʜᴇ ɴᴜᴍʙᴇʀ ᴏꜰ ᴛʜᴇ ʟɪɴᴋ ᴛᴏ ᴇᴅɪᴛ ɪɴ ᴛʜᴇ ɴᴇxᴛ 60 ꜱᴇᴄᴏɴᴅꜱ!__"""
+
+    await query.message.edit_text(msg)
+    try:
+        res = await client.listen(user_id=query.from_user.id, filters=filters.text, timeout=60)
+        raw = res.text.strip()
+        if not raw.isdigit() or not (1 <= int(raw) <= len(auto_list)):
+            return await query.message.edit_text(f"**✗ ɪɴᴠᴀʟɪᴅ ɴᴜᴍʙᴇʀ! ᴘɪᴄᴋ 1-{len(auto_list)}.**",
+                                                 reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('◂ ʙᴀᴄᴋ', 'auto_shortner')]]))
+        idx = int(raw) - 1
+        current = auto_list[idx]
+
+        msg2 = f"""<blockquote>**ᴇᴅɪᴛɪɴɢ ʟɪɴᴋ #{idx + 1}:**</blockquote>
+**ᴄᴜʀʀᴇɴᴛ ᴜʀʟ:** `{current.get('url', '?')}`
+**ᴄᴜʀʀᴇɴᴛ ᴀᴘɪ:** `{(current.get('api', '')[:20] + '...') if current.get('api') else 'ɴᴏᴛ ꜱᴇᴛ'}`
+**ᴄᴜʀʀᴇɴᴛ ᴛᴜᴛᴏʀɪᴀʟ:** `{current.get('tutorial_link', 'ɴᴏᴛ ꜱᴇᴛ')}`
+
+__<blockquote>**≡ ꜱᴇɴᴅ ᴛʜᴇ ɴᴇᴡ ᴅᴇᴛᴀɪʟs ɪɴ ᴛʜɪꜱ ꜰᴏʀᴍᴀᴛ ɪɴ ᴛʜᴇ ɴᴇxᴛ 90 ꜱᴇᴄᴏɴᴅꜱ!**</blockquote>__
+
+**ꜰᴏʀᴍᴀᴛ:** `url api tutorial_link`
+**ᴇxᴀᴍᴘʟᴇ:** `gplinks.in 9435894656863495834957348 https://t.me/How_to_Download_7x/26`"""
+
+        await query.message.edit_text(msg2)
+        res2 = await client.listen(user_id=query.from_user.id, filters=filters.text, timeout=90)
+        response_text = res2.text.strip()
+
+        parts = response_text.split()
+        if len(parts) == 3:
+            raw_url, api, tutorial_link = parts
+            new_url = raw_url.replace('https://', '').replace('http://', '').replace('/', '')
+
+            valid = (
+                new_url and '.' in new_url
+                and api and len(api) > 10
+                and (tutorial_link.startswith('https://') or tutorial_link.startswith('http://'))
+            )
+
+            if valid:
+                client.auto_shorteners[idx] = {'url': new_url, 'api': api, 'tutorial_link': tutorial_link}
+                await save_auto_shorteners(client)
+
+                await query.message.edit_text(
+                    f"**✓ ᴜᴘᴅᴀᴛᴇᴅ ʟɪɴᴋ #{idx + 1}!**\n\n**ᴜʀʟ:** `{new_url}`",
+                    reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('◂ ʙᴀᴄᴋ', 'auto_shortner')]])
+                )
+            else:
+                await query.message.edit_text("**✗ ɪɴᴠᴀʟɪᴅ ꜰᴏʀᴍᴀᴛ! ᴄʜᴇᴄᴋ ᴜʀʟ/ᴀᴘɪ/ᴛᴜᴛᴏʀɪᴀʟ ʟɪɴᴋ.**",
+                                              reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('◂ ʙᴀᴄᴋ', 'auto_shortner')]]))
+        else:
+            await query.message.edit_text("**✗ ɪɴᴠᴀʟɪᴅ ꜰᴏʀᴍᴀᴛ! ᴜꜱᴇ: `url api tutorial_link`**",
+                                          reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('◂ ʙᴀᴄᴋ', 'auto_shortner')]]))
+    except ListenerTimeout:
+        await query.message.edit_text("**⏰ ᴛɪᴍᴇᴏᴜᴛ! ᴛʀʏ ᴀɢᴀɪɴ.**",
+                                    reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('◂ ʙᴀᴄᴋ', 'auto_shortner')]]))
+
+#===============================================================#
+
+@Client.on_callback_query(filters.regex("^move_auto_shortner$"))
+async def move_auto_shortner(client: Client, query: CallbackQuery):
+    """Reorder an auto link — lets an admin change which position number (#1, #2, ...) a link sits at."""
+    if not query.from_user.id in client.admins:
+        return await query.answer('❌ ᴏɴʟʏ ᴀᴅᴍɪɴꜱ ᴄᴀɴ ᴜꜱᴇ ᴛʜɪꜱ!', show_alert=True)
+
+    await query.answer()
+
+    auto_list = getattr(client, 'auto_shorteners', []) or []
+    if len(auto_list) < 2:
+        return await query.message.edit_text("**✗ ɴᴇᴇᴅ ᴀᴛ ʟᴇᴀꜱᴛ 2 ʟɪɴᴋs ᴛᴏ ʀᴇᴏʀᴅᴇʀ!**",
+                                             reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('◂ ʙᴀᴄᴋ', 'auto_shortner')]]))
+
+    listing = "\n".join(f"**{i}.** `{cfg.get('url', '?')}`" for i, cfg in enumerate(auto_list, start=1))
+    msg = f"""<blockquote>**ʀᴇᴏʀᴅᴇʀ ᴀᴜᴛᴏ ʟɪɴᴋ:**</blockquote>
+{listing}
+
+__ꜱᴇɴᴅ ᴛʜᴇ ᴄᴜʀʀᴇɴᴛ ɴᴜᴍʙᴇʀ ᴀɴᴅ ᴛʜᴇ ɴᴇᴡ ɴᴜᴍʙᴇʀ, ꜱᴇᴘᴀʀᴀᴛᴇᴅ ʙʏ ᴀ ꜱᴘᴀᴄᴇ (ᴇ.ɢ. `3 1`), ɪɴ ᴛʜᴇ ɴᴇxᴛ 60 ꜱᴇᴄᴏɴᴅꜱ!__"""
+
+    await query.message.edit_text(msg)
+    try:
+        res = await client.listen(user_id=query.from_user.id, filters=filters.text, timeout=60)
+        parts = res.text.strip().split()
+        if (
+            len(parts) == 2 and all(p.isdigit() for p in parts)
+            and 1 <= int(parts[0]) <= len(auto_list) and 1 <= int(parts[1]) <= len(auto_list)
+        ):
+            from_idx, to_idx = int(parts[0]) - 1, int(parts[1]) - 1
+            item = client.auto_shorteners.pop(from_idx)
+            client.auto_shorteners.insert(to_idx, item)
+            await save_auto_shorteners(client)
+            await query.message.edit_text(
+                f"**✓ ᴍᴏᴠᴇᴅ `{item.get('url', '?')}` ᴛᴏ #{to_idx + 1}!**",
+                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('◂ ʙᴀᴄᴋ', 'auto_shortner')]])
+            )
+        else:
+            await query.message.edit_text(f"**✗ ɪɴᴠᴀʟɪᴅ! ꜱᴇɴᴅ ᴛᴡᴏ ɴᴜᴍʙᴇʀꜱ ʙᴇᴛᴡᴇᴇɴ 1-{len(auto_list)}, ᴇ.ɢ. `3 1`.**",
+                                          reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('◂ ʙᴀᴄᴋ', 'auto_shortner')]]))
     except ListenerTimeout:
         await query.message.edit_text("**⏰ ᴛɪᴍᴇᴏᴜᴛ! ᴛʀʏ ᴀɢᴀɪɴ.**",
                                     reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('◂ ʙᴀᴄᴋ', 'auto_shortner')]]))
