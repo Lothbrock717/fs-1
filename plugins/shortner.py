@@ -45,26 +45,17 @@ def sync_mirror(client):
 
 #===============================================================#
 
-def get_short(url, client):
-
-    # Check if shortner is enabled
-    shortner_enabled = getattr(client, 'shortner_enabled', True)
-    if not shortner_enabled:
-        return None  # shortner disabled — caller will deliver file directly
-
-    active_name = getattr(client, 'active_shortener', None)
-    active_cfg = get_active_shortener(client)
-    if not active_cfg:
-        return None  # no shortner configured — caller will deliver file directly
-
-    cache_key = f"{active_name}:{url}"
+def _shorten_with_config(url, cfg, cache_key):
+    """Shared shortening logic — takes an explicit {url, api, ...} config
+    rather than reading it off the client, so it works for both the regular
+    active shortner and the auto-mode cycle."""
     if cache_key in shortened_urls_cache:
         return shortened_urls_cache[cache_key]
 
     try:
         alias = generate_random_alphanumeric()
-        short_url = active_cfg.get('url', SHORT_URL)
-        short_api = active_cfg.get('api', SHORT_API)
+        short_url = cfg.get('url', SHORT_URL)
+        short_api = cfg.get('api', SHORT_API)
 
         api_url = f"https://{short_url}/api?api={short_api}&url={url}&alias={alias}"
         response = requests.get(api_url)
@@ -78,6 +69,34 @@ def get_short(url, client):
         print(f"[Shortener Error] {e}")
 
     return None  # fallback — caller should deliver file directly
+
+def get_short(url, client):
+
+    # Check if shortner is enabled
+    shortner_enabled = getattr(client, 'shortner_enabled', True)
+    if not shortner_enabled:
+        return None  # shortner disabled — caller will deliver file directly
+
+    active_name = getattr(client, 'active_shortener', None)
+    active_cfg = get_active_shortener(client)
+    if not active_cfg:
+        return None  # no shortner configured — caller will deliver file directly
+
+    cache_key = f"{active_name}:{url}"
+    return _shorten_with_config(url, active_cfg, cache_key)
+
+#===============================================================#
+# Auto-mode shortner support
+#===============================================================#
+
+def get_auto_shorteners(client):
+    """Return this bot's ordered list of auto-mode shortner configs."""
+    return getattr(client, 'auto_shorteners', []) or []
+
+def get_auto_short(url, cfg, index):
+    """Shorten `url` using the auto-mode shortner at position `index` (for cache keying only)."""
+    cache_key = f"auto:{index}:{cfg.get('url', '')}:{url}"
+    return _shorten_with_config(url, cfg, cache_key)
 
 #===============================================================#
 
@@ -142,6 +161,7 @@ async def shortner_panel(client, query_or_message):
         [InlineKeyboardButton(f'• {toggle_text} ꜱʜᴏʀᴛɴᴇʀ •', 'toggle_shortner'), InlineKeyboardButton('• ᴀᴅᴅ ꜱʜᴏʀᴛɴᴇʀ •', 'add_shortner')],
         [InlineKeyboardButton('• ꜱᴡɪᴛᴄʜ ꜱʜᴏʀᴛɴᴇʀ •', 'switch_shortner'), InlineKeyboardButton('• ʀᴇᴍᴏᴠᴇ ꜱʜᴏʀᴛɴᴇʀ •', 'rm_shortner')],
         [InlineKeyboardButton('• ꜱᴇᴛ ᴛᴜᴛᴏʀɪᴀʟ ʟɪɴᴋ •', 'set_tutorial_link'), InlineKeyboardButton('• ᴛᴇꜱᴛ ꜱʜᴏʀᴛɴᴇʀ •', 'test_shortner')],
+        [InlineKeyboardButton('• 🔁 ᴀᴜᴛᴏ ᴍᴏᴅᴇ •', 'auto_shortner')],
         [InlineKeyboardButton('◂ ʙᴀᴄᴋ ᴛᴏ ꜱᴇᴛᴛɪɴɢꜱ', 'settings')] if hasattr(query_or_message, 'message') else []
     ])
 
@@ -409,3 +429,164 @@ async def test_shortner(client: Client, query: CallbackQuery):
         msg = f"**❌ ꜱʜᴏʀᴛɴᴇʀ `{active_name}` ᴛᴇꜱᴛ ꜰᴀɪʟᴇᴅ!**\n\n**ᴇʀʀᴏʀ:** `{str(e)}`"
 
     await query.message.edit_text(msg, reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('◂ ʙᴀᴄᴋ', 'shortner')]]))
+
+#===============================================================#
+# Auto Mode — separate ordered shortner list, cycles one at a time
+# per-user, shared across all bots on this database, resets daily
+# at 12 AM India time.
+#===============================================================#
+
+async def save_auto_shorteners(client):
+    """Persist client.auto_shorteners + client.auto_shortener_enabled to the DB."""
+    await client.mongodb.update_auto_shortner_setting('shorteners', client.auto_shorteners, client.bot_id)
+    await client.mongodb.update_auto_shortner_setting('enabled', client.auto_shortener_enabled, client.bot_id)
+
+async def auto_shortner_panel(client, query_or_message):
+    auto_list = getattr(client, 'auto_shorteners', []) or []
+    auto_enabled = getattr(client, 'auto_shortener_enabled', False)
+
+    enabled_text = "✓ ᴇɴᴀʙʟᴇᴅ" if auto_enabled else "✗ ᴅɪsᴀʙʟᴇᴅ"
+    toggle_text = "✗ ᴏғғ" if auto_enabled else "✓ ᴏɴ"
+
+    if auto_list:
+        lines = []
+        for i, cfg in enumerate(auto_list, start=1):
+            lines.append(f"**{i}.** `{cfg.get('url', '?')}`")
+        list_display = "\n".join(lines)
+    else:
+        list_display = "_ɴᴏ ᴀᴜᴛᴏ ʟɪɴᴋs ᴀᴅᴅᴇᴅ ʏᴇᴛ_"
+
+    msg = f"""<blockquote>✦ 𝗔𝗨𝗧𝗢 𝗠𝗢𝗗𝗘 𝗦𝗘𝗧𝗧𝗜𝗡𝗚𝗦</blockquote>
+**<u>ꜱᴛᴀᴛᴜꜱ:</u>** {enabled_text}
+
+**<u>ʜᴏᴡ ɪᴛ ᴡᴏʀᴋs:</u>**
+<blockquote>Wʜᴇɴ ᴏɴ, ᴇᴀᴄʜ ᴜsᴇʀ ɪs sʜᴏᴡɴ ᴏɴᴇ ʟɪɴᴋ ꜰʀᴏᴍ ᴛʜᴇ ʟɪsᴛ ʙᴇʟᴏᴡ ᴀᴛ ᴀ ᴛɪᴍᴇ. Sᴏʟᴠɪɴɢ ɪᴛ ᴍᴏᴠᴇs ᴛʜᴇᴍ ᴛᴏ ᴛʜᴇ ɴᴇxᴛ ʟɪɴᴋ, ᴡʀᴀᴘᴘɪɴɢ ʙᴀᴄᴋ ᴛᴏ #1 ᴀꜰᴛᴇʀ ᴛʜᴇ ʟᴀꜱᴛ. Tʜᴇ ᴄʏᴄʟᴇ ᴀʟsᴏ ʀᴇsᴇᴛs ᴛᴏ #1 ᴇᴠᴇʀʏ ᴅᴀʏ ᴀᴛ 12 AM IST, ᴀɴᴅ ɪs sʜᴀʀᴇᴅ ᴀᴄʀᴏss ᴀʟʟ ʙᴏᴛs ᴏɴ ᴛʜɪs ᴅᴀᴛᴀʙᴀsᴇ ꜰᴏʀ ᴛʜᴇ sᴀᴍᴇ ᴜsᴇʀ.</blockquote>
+
+**<u>ᴀᴜᴛᴏ ʟɪɴᴋs ({len(auto_list)}):</u>**
+<blockquote>{list_display}</blockquote>
+
+<blockquote>**Nᴏᴛᴇ:** Wʜᴇɴ ᴀᴜᴛᴏ ᴍᴏᴅᴇ ɪs ᴏɴ, ɪᴛ ᴏᴠᴇʀʀɪᴅᴇs ᴛʜᴇ ʀᴇɢᴜʟᴀʀ sʜᴏʀᴛɴᴇʀ ᴀʙᴏᴠᴇ ꜰᴏʀ ɴᴇᴡ ꜰɪʟᴇ ʟɪɴᴋs.**</blockquote>"""
+
+    reply_markup = InlineKeyboardMarkup([
+        [InlineKeyboardButton(f'• {toggle_text} ᴀᴜᴛᴏ ᴍᴏᴅᴇ •', 'toggle_auto_shortner')],
+        [InlineKeyboardButton('• ᴀᴅᴅ ʟɪɴᴋ •', 'add_auto_shortner'), InlineKeyboardButton('• ʀᴇᴍᴏᴠᴇ ʟɪɴᴋ •', 'rm_auto_shortner')],
+        [InlineKeyboardButton('◂ ʙᴀᴄᴋ', 'shortner')]
+    ])
+
+    if hasattr(query_or_message, 'message'):
+        await query_or_message.message.edit_text(msg, reply_markup=reply_markup)
+    else:
+        await query_or_message.reply_text(msg, reply_markup=reply_markup)
+
+#===============================================================#
+
+@Client.on_callback_query(filters.regex("^auto_shortner$"))
+async def auto_shortner_callback(client, query):
+    if not query.from_user.id in client.admins:
+        return await query.answer('❌ ᴏɴʟʏ ᴀᴅᴍɪɴꜱ ᴄᴀɴ ᴜꜱᴇ ᴛʜɪꜱ!', show_alert=True)
+    await query.answer()
+    await auto_shortner_panel(client, query)
+
+#===============================================================#
+
+@Client.on_callback_query(filters.regex("^toggle_auto_shortner$"))
+async def toggle_auto_shortner(client: Client, query: CallbackQuery):
+    if not query.from_user.id in client.admins:
+        return await query.answer('❌ ᴏɴʟʏ ᴀᴅᴍɪɴꜱ ᴄᴀɴ ᴜꜱᴇ ᴛʜɪꜱ!', show_alert=True)
+
+    new_status = not getattr(client, 'auto_shortener_enabled', False)
+    client.auto_shortener_enabled = new_status
+    await client.mongodb.update_auto_shortner_setting('enabled', new_status, client.bot_id)
+
+    status_text = "ᴇɴᴀʙʟᴇᴅ" if new_status else "ᴅɪsᴀʙʟᴇᴅ"
+    await query.answer(f"✓ ᴀᴜᴛᴏ ᴍᴏᴅᴇ {status_text}!")
+    await auto_shortner_panel(client, query)
+
+#===============================================================#
+
+@Client.on_callback_query(filters.regex("^add_auto_shortner$"))
+async def add_auto_shortner(client: Client, query: CallbackQuery):
+    if not query.from_user.id in client.admins:
+        return await query.answer('❌ ᴏɴʟʏ ᴀᴅᴍɪɴꜱ ᴄᴀɴ ᴜꜱᴇ ᴛʜɪꜱ!', show_alert=True)
+
+    await query.answer()
+
+    auto_list = getattr(client, 'auto_shorteners', []) or []
+    msg = f"""<blockquote>**ᴀᴅᴅ ᴀ ʟɪɴᴋ ᴛᴏ ᴀᴜᴛᴏ ᴍᴏᴅᴇ (ᴡɪʟʟ ʙᴇᴄᴏᴍᴇ #{len(auto_list) + 1}):**</blockquote>
+
+__<blockquote>**≡ ꜱᴇɴᴅ ᴛʜᴇ ɴᴇᴡ ʟɪɴᴋ ɪɴ ᴛʜɪꜱ ꜰᴏʀᴍᴀᴛ ɪɴ ᴛʜᴇ ɴᴇxᴛ 90 ꜱᴇᴄᴏɴᴅꜱ!**</blockquote>__
+
+**ꜰᴏʀᴍᴀᴛ:** `url api tutorial_link`
+**ᴇxᴀᴍᴘʟᴇ:** `gplinks.in 9435894656863495834957348 https://t.me/How_to_Download_7x/26`"""
+
+    await query.message.edit_text(msg)
+    try:
+        res = await client.listen(user_id=query.from_user.id, filters=filters.text, timeout=90)
+        response_text = res.text.strip()
+
+        parts = response_text.split()
+        if len(parts) == 3:
+            raw_url, api, tutorial_link = parts
+            new_url = raw_url.replace('https://', '').replace('http://', '').replace('/', '')
+
+            valid = (
+                new_url and '.' in new_url
+                and api and len(api) > 10
+                and (tutorial_link.startswith('https://') or tutorial_link.startswith('http://'))
+            )
+
+            if valid:
+                if not hasattr(client, 'auto_shorteners'):
+                    client.auto_shorteners = []
+                client.auto_shorteners.append({'url': new_url, 'api': api, 'tutorial_link': tutorial_link})
+                await save_auto_shorteners(client)
+
+                await query.message.edit_text(
+                    f"**✓ ᴀᴅᴅᴇᴅ ᴀꜱ ʟɪɴᴋ #{len(client.auto_shorteners)}!**\n\n**ᴜʀʟ:** `{new_url}`",
+                    reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('◂ ʙᴀᴄᴋ', 'auto_shortner')]])
+                )
+            else:
+                await query.message.edit_text("**✗ ɪɴᴠᴀʟɪᴅ ꜰᴏʀᴍᴀᴛ! ᴄʜᴇᴄᴋ ᴜʀʟ/ᴀᴘɪ/ᴛᴜᴛᴏʀɪᴀʟ ʟɪɴᴋ.**",
+                                              reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('◂ ʙᴀᴄᴋ', 'auto_shortner')]]))
+        else:
+            await query.message.edit_text("**✗ ɪɴᴠᴀʟɪᴅ ꜰᴏʀᴍᴀᴛ! ᴜꜱᴇ: `url api tutorial_link`**",
+                                          reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('◂ ʙᴀᴄᴋ', 'auto_shortner')]]))
+    except ListenerTimeout:
+        await query.message.edit_text("**⏰ ᴛɪᴍᴇᴏᴜᴛ! ᴛʀʏ ᴀɢᴀɪɴ.**",
+                                    reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('◂ ʙᴀᴄᴋ', 'auto_shortner')]]))
+
+#===============================================================#
+
+@Client.on_callback_query(filters.regex("^rm_auto_shortner$"))
+async def rm_auto_shortner(client: Client, query: CallbackQuery):
+    if not query.from_user.id in client.admins:
+        return await query.answer('❌ ᴏɴʟʏ ᴀᴅᴍɪɴꜱ ᴄᴀɴ ᴜꜱᴇ ᴛʜɪꜱ!', show_alert=True)
+
+    await query.answer()
+
+    auto_list = getattr(client, 'auto_shorteners', []) or []
+    if not auto_list:
+        return await query.message.edit_text("**✗ ɴᴏ ᴀᴜᴛᴏ ʟɪɴᴋs ᴛᴏ ʀᴇᴍᴏᴠᴇ!**",
+                                             reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('◂ ʙᴀᴄᴋ', 'auto_shortner')]]))
+
+    listing = "\n".join(f"**{i}.** `{cfg.get('url', '?')}`" for i, cfg in enumerate(auto_list, start=1))
+    msg = f"""<blockquote>**ʀᴇᴍᴏᴠᴇ ᴀᴜᴛᴏ ʟɪɴᴋ:**</blockquote>
+{listing}
+
+__ꜱᴇɴᴅ ᴛʜᴇ ɴᴜᴍʙᴇʀ ᴏꜰ ᴛʜᴇ ʟɪɴᴋ ᴛᴏ ʀᴇᴍᴏᴠᴇ ɪɴ ᴛʜᴇ ɴᴇxᴛ 60 ꜱᴇᴄᴏɴᴅꜱ!__"""
+
+    await query.message.edit_text(msg)
+    try:
+        res = await client.listen(user_id=query.from_user.id, filters=filters.text, timeout=60)
+        raw = res.text.strip()
+        if not raw.isdigit() or not (1 <= int(raw) <= len(auto_list)):
+            return await query.message.edit_text(f"**✗ ɪɴᴠᴀʟɪᴅ ɴᴜᴍʙᴇʀ! ᴘɪᴄᴋ 1-{len(auto_list)}.**",
+                                                 reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('◂ ʙᴀᴄᴋ', 'auto_shortner')]]))
+        idx = int(raw) - 1
+        removed = client.auto_shorteners.pop(idx)
+        await save_auto_shorteners(client)
+        await query.message.edit_text(f"**✓ ʀᴇᴍᴏᴠᴇᴅ `{removed.get('url', '?')}`!**\n**ʀᴇᴍᴀɪɴɪɴɢ:** `{len(client.auto_shorteners)}`",
+                                      reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('◂ ʙᴀᴄᴋ', 'auto_shortner')]]))
+    except ListenerTimeout:
+        await query.message.edit_text("**⏰ ᴛɪᴍᴇᴏᴜᴛ! ᴛʀʏ ᴀɢᴀɪɴ.**",
+                                    reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('◂ ʙᴀᴄᴋ', 'auto_shortner')]]))
