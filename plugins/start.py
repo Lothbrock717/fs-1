@@ -7,6 +7,16 @@ from config import MSG_EFFECT, OWNER_ID
 from plugins.shortner import get_short, get_active_shortener, get_auto_short
 from helper.helper_func import force_sub, batch_auto_del_notification, _track_task
 from helper.helper_func import ist_today_str
+
+
+async def get_effective_auto_position(client, user_id):
+    """Return (today_ist_str, effective_position) for a user's auto-mode
+    cycle — resets to 0 if their last activity wasn't today (IST), which is
+    what gives the daily 12 AM IST reset without needing a scheduler."""
+    today = ist_today_str()
+    progress = await client.mongodb.get_auto_progress(user_id)
+    position = progress.get('position', 0) if progress.get('last_active_date') == today else 0
+    return today, position
 from helper.helper_func import str_to_b64, b64_to_str
 import asyncio
 import re
@@ -152,18 +162,18 @@ async def start_command(client: Client, message: Message):
         is_token_link = len(original_payload) == 24 and all(c in '0123456789abcdef' for c in original_payload)
 
         if is_token_link:
-            # Auto-mode tokens are checked first — they're also 24-hex, but
-            # carry per-user cycle metadata. Solving one advances that
-            # user's global cycle position by one (shared across bots).
+            # Auto-mode tokens are checked first — they're also 24-hex, but a
+            # given auto token is SHARED by every user at that (file,
+            # position) — just like the regular shortener shares one link
+            # per file. Solving it advances the *current resolving user's*
+            # own cycle position by one.
             auto_token_data = await client.mongodb.get_auto_token_data(original_payload)
             if auto_token_data:
                 real_payload = auto_token_data.get('payload')
                 if not real_payload:
                     return await message.reply("⚠️ This link has expired or is invalid. Please get a fresh link.")
-                if auto_token_data.get('user_id') == user_id:
-                    new_position = auto_token_data.get('position', 0) + 1
-                    await client.mongodb.set_auto_progress(user_id, new_position, ist_today_str())
-                await client.mongodb.delete_auto_token(original_payload)
+                _, effective_position = await get_effective_auto_position(client, user_id)
+                await client.mongodb.set_auto_progress(user_id, effective_position + 1, ist_today_str())
                 original_payload = real_payload
                 is_new_link = False  # already validated, skip shortener gate below
             else:
@@ -184,17 +194,16 @@ async def start_command(client: Client, message: Message):
             # list length, so it wraps per bot while staying in sync across
             # every bot sharing this database. It resets to 0 whenever the
             # stored date isn't today (IST) — no scheduler needed.
-            today = ist_today_str()
-            progress = await client.mongodb.get_auto_progress(user_id)
-            position = progress.get('position', 0) if progress.get('last_active_date') == today else 0
+            _, position = await get_effective_auto_position(client, user_id)
             index = position % len(auto_shorteners_list)
             auto_cfg = auto_shorteners_list[index]
 
-            # Reuse an existing unsolved token for this exact user/file/day/position
-            token = await client.mongodb.get_auto_token_for_user(user_id, original_payload, today, position)
+            # Reuse the existing shared link for this file+position, if one exists
+            # — same caching behavior as the regular shortener (one link per file).
+            token = await client.mongodb.get_auto_token_for_payload(original_payload, index)
             if not token:
                 token = secrets.token_hex(12)
-                await client.mongodb.store_auto_token(token, original_payload, user_id, position, today)
+                await client.mongodb.store_auto_token(token, original_payload, index)
 
             short_link = None
             try:
