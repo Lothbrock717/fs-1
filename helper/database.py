@@ -1,6 +1,14 @@
 import motor.motor_asyncio
 from datetime import datetime, timedelta
 
+# Fixed database name for data that must be shared across every bot on the
+# same MongoDB cluster/URI, regardless of each bot's own DB_NAME — e.g. the
+# auto-shortener per-user cycle position, so solving link #1 on one bot
+# correctly shows link #2 on another. Using a bot's own `self.db` (which is
+# `client[db_name]`) does NOT work for this if bots have different DB_NAMEs,
+# since that puts each bot's progress in a different actual database.
+SHARED_DB_NAME = "f2bots_shared_autoshortener"
+
 class MongoDB:
     _instances = {}
 
@@ -15,6 +23,9 @@ class MongoDB:
                 maxPoolSize=10
             )
             instance.db = instance.client[db_name]
+            # Shared across all bots on this URI, independent of db_name —
+            # only used for the auto-shortener progress/token collections.
+            instance.shared_db = instance.client[SHARED_DB_NAME]
             instance.user_data = instance.db["users"]
             instance.channel_data = instance.db["channels"]
             instance.premium_users = instance.db['pros']
@@ -32,7 +43,7 @@ class MongoDB:
             return
         try:
             await self.db["short_tokens"].create_index("createdAt", expireAfterSeconds=86400)
-            await self.db["auto_short_tokens"].create_index("createdAt", expireAfterSeconds=86400)
+            await self.shared_db["auto_short_tokens"].create_index("createdAt", expireAfterSeconds=86400)
         except Exception:
             pass  # non-fatal — worst case tokens just aren't auto-expired yet
         self._indexes_ready = True
@@ -785,18 +796,18 @@ class MongoDB:
     # survives restarts.
 
     async def get_auto_progress(self, user_id: int) -> dict:
-        doc = await self.db["auto_shortener_progress"].find_one({"_id": user_id})
+        doc = await self.shared_db["auto_shortener_progress"].find_one({"_id": user_id})
         return doc or {}
 
     async def set_auto_progress(self, user_id: int, position: int, date_str: str):
-        await self.db["auto_shortener_progress"].update_one(
+        await self.shared_db["auto_shortener_progress"].update_one(
             {"_id": user_id},
             {"$set": {"position": position, "last_active_date": date_str}},
             upsert=True
         )
 
     async def reset_auto_progress(self, user_id: int):
-        await self.db["auto_shortener_progress"].delete_one({"_id": user_id})
+        await self.shared_db["auto_shortener_progress"].delete_one({"_id": user_id})
 
     # ── Auto-shortener tokens ────────────────────────────────────────────────
     # Mirrors the regular short-link tokens: ONE shared link per (file,
@@ -806,7 +817,7 @@ class MongoDB:
     # the number of users.
 
     async def store_auto_token(self, token: str, payload: str, position: int):
-        await self.db["auto_short_tokens"].update_one(
+        await self.shared_db["auto_short_tokens"].update_one(
             {"_id": token},
             {"$set": {
                 "payload": payload,
@@ -817,14 +828,14 @@ class MongoDB:
 
     async def get_auto_token_for_payload(self, payload: str, position: int) -> str | None:
         """Return the existing shared token for this file+position, if one exists."""
-        doc = await self.db["auto_short_tokens"].find_one({"payload": payload, "position": position})
+        doc = await self.shared_db["auto_short_tokens"].find_one({"payload": payload, "position": position})
         return doc["_id"] if doc else None
 
     async def get_auto_token_data(self, token: str) -> dict | None:
-        return await self.db["auto_short_tokens"].find_one({"_id": token})
+        return await self.shared_db["auto_short_tokens"].find_one({"_id": token})
 
     async def delete_auto_token(self, token: str):
-        await self.db["auto_short_tokens"].delete_one({"_id": token})
+        await self.shared_db["auto_short_tokens"].delete_one({"_id": token})
 
 
     # ✅ BATCH SETTINGS FUNCTIONS
