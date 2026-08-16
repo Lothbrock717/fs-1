@@ -4,8 +4,9 @@ from pyrogram.enums import ParseMode
 from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
 import humanize
 from config import MSG_EFFECT, OWNER_ID
-from plugins.shortner import get_short, get_active_shortener
+from plugins.shortner import get_short, get_active_shortener, get_auto_short
 from helper.helper_func import force_sub, batch_auto_del_notification, _track_task
+from helper.helper_func import ist_today_str
 from helper.helper_func import str_to_b64, b64_to_str
 import asyncio
 import re
@@ -151,14 +152,94 @@ async def start_command(client: Client, message: Message):
         is_token_link = len(original_payload) == 24 and all(c in '0123456789abcdef' for c in original_payload)
 
         if is_token_link:
-            # Validate token from DB
-            real_payload = await client.mongodb.get_token_payload(original_payload)
-            if not real_payload:
-                return await message.reply("⚠️ This link has expired or is invalid. Please get a fresh link.")
-            original_payload = real_payload
-            is_new_link = False  # already validated, skip shortener gate below
+            # Auto-mode tokens are checked first — they're also 24-hex, but
+            # carry per-user cycle metadata. Solving one advances that
+            # user's global cycle position by one (shared across bots).
+            auto_token_data = await client.mongodb.get_auto_token_data(original_payload)
+            if auto_token_data:
+                real_payload = auto_token_data.get('payload')
+                if not real_payload:
+                    return await message.reply("⚠️ This link has expired or is invalid. Please get a fresh link.")
+                if auto_token_data.get('user_id') == user_id:
+                    new_position = auto_token_data.get('position', 0) + 1
+                    await client.mongodb.set_auto_progress(user_id, new_position, ist_today_str())
+                await client.mongodb.delete_auto_token(original_payload)
+                original_payload = real_payload
+                is_new_link = False  # already validated, skip shortener gate below
+            else:
+                # Validate token from DB
+                real_payload = await client.mongodb.get_token_payload(original_payload)
+                if not real_payload:
+                    return await message.reply("⚠️ This link has expired or is invalid. Please get a fresh link.")
+                original_payload = real_payload
+                is_new_link = False  # already validated, skip shortener gate below
 
-        if not is_user_pro and user_id != OWNER_ID and not is_short_link and not is_token_link and shortner_enabled and is_new_link:
+        auto_shortener_enabled = getattr(client, 'auto_shortener_enabled', False)
+        auto_shorteners_list = getattr(client, 'auto_shorteners', []) or []
+        use_auto_mode = auto_shortener_enabled and bool(auto_shorteners_list)
+
+        if not is_user_pro and user_id != OWNER_ID and not is_short_link and not is_token_link and is_new_link and use_auto_mode:
+            # ── Auto mode: one shortener at a time, cycling per user ───────────
+            # Position only ever increases and is read back mod this bot's own
+            # list length, so it wraps per bot while staying in sync across
+            # every bot sharing this database. It resets to 0 whenever the
+            # stored date isn't today (IST) — no scheduler needed.
+            today = ist_today_str()
+            progress = await client.mongodb.get_auto_progress(user_id)
+            position = progress.get('position', 0) if progress.get('last_active_date') == today else 0
+            index = position % len(auto_shorteners_list)
+            auto_cfg = auto_shorteners_list[index]
+
+            # Reuse an existing unsolved token for this exact user/file/day/position
+            token = await client.mongodb.get_auto_token_for_user(user_id, original_payload, today, position)
+            if not token:
+                token = secrets.token_hex(12)
+                await client.mongodb.store_auto_token(token, original_payload, user_id, position, today)
+
+            short_link = None
+            try:
+                short_link = get_auto_short(
+                    f"https://t.me/{client.username}?start={token}",
+                    auto_cfg,
+                    index
+                )
+            except Exception as e:
+                client.LOGGER(__name__, client.name).warning(f"Auto shortener failed: {e}")
+
+            if short_link and short_link.startswith("http"):
+                short_photo = client.messages.get("SHORT_PIC", "")
+                short_caption = client.messages.get("SHORT_MSG", "")
+                tutorial_link = auto_cfg.get('tutorial_link', "") or "https://t.me/How_to_Download_7x/26"
+                step_caption = f"{short_caption}\n\n<b>ꜱᴛᴇᴘ {index + 1}/{len(auto_shorteners_list)} ᴛᴏᴅᴀʏ</b>"
+
+                sent = await client.send_photo(
+                    chat_id=message.chat.id,
+                    photo=short_photo,
+                    caption=step_caption,
+                    reply_markup=InlineKeyboardMarkup([
+                        [
+                            InlineKeyboardButton("• ᴏᴘᴇɴ ʟɪɴᴋ", url=short_link),
+                            InlineKeyboardButton("ᴛᴜᴛᴏʀɪᴀʟ •", url=tutorial_link)
+                        ],
+                        [
+                            InlineKeyboardButton(" • ʙᴜʏ ᴘʀᴇᴍɪᴜᴍ •", url="https://t.me/+V7zUi7O_DkEyNGZl")
+                        ]
+                    ])
+                )
+
+                async def _delete_after(msg, delay):
+                    await asyncio.sleep(delay)
+                    try:
+                        await msg.delete()
+                    except Exception:
+                        pass
+
+                _track_task(_delete_after(sent, 3600))  # delete after 1 hour
+                return
+            # If the auto shortener failed, fall through and deliver file directly
+            # (auto mode intentionally does not fall back to the regular shortener)
+
+        if not is_user_pro and user_id != OWNER_ID and not is_short_link and not is_token_link and shortner_enabled and is_new_link and not use_auto_mode:
             # Reuse existing token if one exists for this payload, else generate new
             token = await client.mongodb.get_token_by_payload(original_payload)
             if not token:
