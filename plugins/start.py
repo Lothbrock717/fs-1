@@ -219,12 +219,11 @@ async def start_command(client: Client, message: Message):
                 short_photo = client.messages.get("SHORT_PIC", "")
                 short_caption = client.messages.get("SHORT_MSG", "")
                 tutorial_link = auto_cfg.get('tutorial_link', "") or "https://t.me/How_to_Download_7x/26"
-                step_caption = f"{short_caption}\n\n<b>ꜱᴛᴇᴘ {index + 1}/{len(auto_shorteners_list)} ᴛᴏᴅᴀʏ</b>"
 
                 sent = await client.send_photo(
                     chat_id=message.chat.id,
                     photo=short_photo,
-                    caption=step_caption,
+                    caption=short_caption,
                     reply_markup=InlineKeyboardMarkup([
                         [
                             InlineKeyboardButton("• ᴏᴘᴇɴ ʟɪɴᴋ", url=short_link),
