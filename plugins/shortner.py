@@ -2,6 +2,7 @@ import requests
 import random
 import re
 import string
+import time
 from config import SHORT_URL, SHORT_API, MESSAGES
 from pyrogram import Client, filters
 from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery, InputMediaPhoto
@@ -441,6 +442,47 @@ async def save_auto_shorteners(client):
     await client.mongodb.update_auto_shortner_setting('shorteners', client.auto_shorteners, client.bot_id)
     await client.mongodb.update_auto_shortner_setting('enabled', client.auto_shortener_enabled, client.bot_id)
 
+#===============================================================#
+# Rotation mode — position #1 of the auto list isn't fixed. Instead it
+# cycles between 2 admin-supplied links, switching on a fixed timer
+# (e.g. every 2 hours). This is time-based (not per-user), so it's
+# computed on the fly from the clock — no scheduler needed.
+#===============================================================#
+
+async def save_rotation_settings(client):
+    """Persist client.rotation_enabled + client.rotation_links + client.rotation_timer_hours to the DB."""
+    await client.mongodb.update_auto_shortner_setting('rotation_enabled', client.rotation_enabled, client.bot_id)
+    await client.mongodb.update_auto_shortner_setting('rotation_links', client.rotation_links, client.bot_id)
+    await client.mongodb.update_auto_shortner_setting('rotation_timer_hours', client.rotation_timer_hours, client.bot_id)
+
+def get_rotation_index(client):
+    """Which of the 2 rotation links (0 or 1) is currently active, based purely
+    on wall-clock time and the configured timer — every bot/user sees the same
+    one at the same moment, and it flips automatically every `timer_hours`."""
+    timer_hours = getattr(client, 'rotation_timer_hours', 2) or 2
+    if timer_hours <= 0:
+        timer_hours = 2
+    epoch_hours = time.time() / 3600
+    return int(epoch_hours // timer_hours) % 2
+
+def get_effective_auto_list(client):
+    """Return the auto-shorteners list as actually used for cycling: if rotation
+    mode is on and both rotation links are set, position #1 (index 0) is replaced
+    by whichever rotation link is currently active, and any other entry further
+    down the list that shares a URL with either rotation link is dropped (it's
+    already being served via rotation, so it shouldn't also take its own slot)."""
+    base_list = getattr(client, 'auto_shorteners', []) or []
+    rotation_enabled = getattr(client, 'rotation_enabled', False)
+    rotation_links = getattr(client, 'rotation_links', []) or []
+
+    if not rotation_enabled or len(rotation_links) < 2 or not base_list:
+        return base_list
+
+    active_cfg = rotation_links[get_rotation_index(client)]
+    rotation_urls = {rotation_links[0].get('url'), rotation_links[1].get('url')}
+    rest = [cfg for cfg in base_list[1:] if cfg.get('url') not in rotation_urls]
+    return [active_cfg] + rest
+
 async def auto_shortner_panel(client, query_or_message):
     auto_list = getattr(client, 'auto_shorteners', []) or []
     auto_enabled = getattr(client, 'auto_shortener_enabled', False)
@@ -471,6 +513,7 @@ async def auto_shortner_panel(client, query_or_message):
         [InlineKeyboardButton(f'• {toggle_text} ᴀᴜᴛᴏ ᴍᴏᴅᴇ •', 'toggle_auto_shortner')],
         [InlineKeyboardButton('• ᴀᴅᴅ ʟɪɴᴋ •', 'add_auto_shortner'), InlineKeyboardButton('• ʀᴇᴍᴏᴠᴇ ʟɪɴᴋ •', 'rm_auto_shortner')],
         [InlineKeyboardButton('• ᴇᴅɪᴛ ʟɪɴᴋ •', 'edit_auto_shortner'), InlineKeyboardButton('• ʀᴇᴏʀᴅᴇʀ ʟɪɴᴋ •', 'move_auto_shortner')],
+        [InlineKeyboardButton('• 🔀 ʀᴏᴛᴀᴛɪᴏɴ ᴍᴏᴅᴇ •', 'rotation_mode')],
         [InlineKeyboardButton('◂ ʙᴀᴄᴋ', 'shortner')]
     ])
 
@@ -739,3 +782,173 @@ async def move_auto_down(client: Client, query: CallbackQuery):
     await save_auto_shorteners(client)
     await query.answer(f"✓ ᴍᴏᴠᴇᴅ ᴛᴏ #{idx + 2}!")
     await _render_reorder_panel(client, query)
+
+#===============================================================#
+# Rotation mode UI — 2 links that swap in/out of auto-mode slot #1
+# on a fixed timer.
+#===============================================================#
+
+def _rotation_link_label(cfg):
+    return f"`{cfg.get('url', '?')}`" if cfg else "_ɴᴏᴛ ꜱᴇᴛ_"
+
+async def rotation_panel(client, query_or_message):
+    rotation_enabled = getattr(client, 'rotation_enabled', False)
+    rotation_links = getattr(client, 'rotation_links', []) or []
+    timer_hours = getattr(client, 'rotation_timer_hours', 2)
+
+    link1 = rotation_links[0] if len(rotation_links) > 0 else None
+    link2 = rotation_links[1] if len(rotation_links) > 1 else None
+
+    enabled_text = "✓ ᴇɴᴀʙʟᴇᴅ" if rotation_enabled else "✗ ᴅɪsᴀʙʟᴇᴅ"
+    toggle_text = "✗ ᴏғғ" if rotation_enabled else "✓ ᴏɴ"
+
+    if len(rotation_links) >= 2:
+        active_idx = get_rotation_index(client)
+        current_line = f"\n**<u>ᴄᴜʀʀᴇɴᴛʟʏ ᴀᴄᴛɪᴠᴇ:</u>** {_rotation_link_label(rotation_links[active_idx])}"
+    else:
+        current_line = ""
+
+    msg = f"""<blockquote>✦ 𝗥𝗢𝗧𝗔𝗧𝗜𝗢𝗡 𝗠𝗢𝗗𝗘</blockquote>
+**<u>ꜱᴛᴀᴛᴜꜱ:</u>** {enabled_text}
+**<u>ᴛɪᴍᴇʀ:</u>** `{timer_hours}` ʜᴏᴜʀ(ꜱ)
+**<u>ʟɪɴᴋ 1:</u>** {_rotation_link_label(link1)}
+**<u>ʟɪɴᴋ 2:</u>** {_rotation_link_label(link2)}
+{current_line}
+
+<blockquote>Wʜᴇɴ ᴏɴ, ᴀᴜᴛᴏ ʟɪɴᴋ #1 ɪs ʀᴇᴘʟᴀᴄᴇᴅ ʙʏ ᴡʜɪᴄʜᴇᴠᴇʀ ᴏꜰ ᴛʜᴇꜱᴇ 2 ʟɪɴᴋs ɪꜱ ᴄᴜʀʀᴇɴᴛ, ꜱᴡᴀᴘᴘɪɴɢ ᴇᴠᴇʀʏ `{timer_hours}` ʜᴏᴜʀ(ꜱ). Nᴇᴇᴅs ʙᴏᴛʜ ʟɪɴᴋs ꜱᴇᴛ ᴛᴏ ᴛᴀᴋᴇ ᴇꜰꜰᴇᴄᴛ.</blockquote>"""
+
+    reply_markup = InlineKeyboardMarkup([
+        [InlineKeyboardButton(f'• {toggle_text} ʀᴏᴛᴀᴛɪᴏɴ •', 'toggle_rotation')],
+        [InlineKeyboardButton('• ꜱᴇᴛ ʟɪɴᴋ 1 •', 'set_rotation_link_1'), InlineKeyboardButton('• ꜱᴇᴛ ʟɪɴᴋ 2 •', 'set_rotation_link_2')],
+        [InlineKeyboardButton('• ꜱᴇᴛ ᴛɪᴍᴇʀ •', 'set_rotation_timer')],
+        [InlineKeyboardButton('◂ ʙᴀᴄᴋ', 'auto_shortner')]
+    ])
+
+    if hasattr(query_or_message, 'message'):
+        await query_or_message.message.edit_text(msg, reply_markup=reply_markup)
+    else:
+        await query_or_message.reply_text(msg, reply_markup=reply_markup)
+
+#===============================================================#
+
+@Client.on_callback_query(filters.regex("^rotation_mode$"))
+async def rotation_mode_callback(client, query):
+    if not query.from_user.id in client.admins:
+        return await query.answer('❌ ᴏɴʟʏ ᴀᴅᴍɪɴꜱ ᴄᴀɴ ᴜꜱᴇ ᴛʜɪꜱ!', show_alert=True)
+    await query.answer()
+    await rotation_panel(client, query)
+
+#===============================================================#
+
+@Client.on_callback_query(filters.regex("^toggle_rotation$"))
+async def toggle_rotation(client: Client, query: CallbackQuery):
+    if not query.from_user.id in client.admins:
+        return await query.answer('❌ ᴏɴʟʏ ᴀᴅᴍɪɴꜱ ᴄᴀɴ ᴜꜱᴇ ᴛʜɪꜱ!', show_alert=True)
+
+    rotation_links = getattr(client, 'rotation_links', []) or []
+    new_status = not getattr(client, 'rotation_enabled', False)
+    if new_status and len(rotation_links) < 2:
+        return await query.answer('❌ ꜱᴇᴛ ʙᴏᴛʜ ʀᴏᴛᴀᴛɪᴏɴ ʟɪɴᴋs ꜰɪʀꜱᴛ!', show_alert=True)
+
+    client.rotation_enabled = new_status
+    await client.mongodb.update_auto_shortner_setting('rotation_enabled', new_status, client.bot_id)
+
+    status_text = "ᴇɴᴀʙʟᴇᴅ" if new_status else "ᴅɪsᴀʙʟᴇᴅ"
+    await query.answer(f"✓ ʀᴏᴛᴀᴛɪᴏɴ {status_text}!")
+    await rotation_panel(client, query)
+
+#===============================================================#
+
+async def _set_rotation_link(client: Client, query: CallbackQuery, idx: int):
+    if not query.from_user.id in client.admins:
+        return await query.answer('❌ ᴏɴʟʏ ᴀᴅᴍɪɴꜱ ᴄᴀɴ ᴜꜱᴇ ᴛʜɪꜱ!', show_alert=True)
+
+    await query.answer()
+
+    msg = f"""<blockquote>**ꜱᴇᴛ ʀᴏᴛᴀᴛɪᴏɴ ʟɪɴᴋ {idx + 1}:**</blockquote>
+
+__<blockquote>**≡ ꜱᴇɴᴅ ᴛʜᴇ ʟɪɴᴋ ɪɴ ᴛʜɪꜱ ꜰᴏʀᴍᴀᴛ ɪɴ ᴛʜᴇ ɴᴇxᴛ 90 ꜱᴇᴄᴏɴᴅꜱ!**</blockquote>__
+
+**ꜰᴏʀᴍᴀᴛ:** `url api tutorial_link`
+**ᴇxᴀᴍᴘʟᴇ:** `gplinks.in 9435894656863495834957348 https://t.me/How_to_Download_7x/26`"""
+
+    await query.message.edit_text(msg)
+    try:
+        res = await client.listen(user_id=query.from_user.id, filters=filters.text, timeout=90)
+        response_text = res.text.strip()
+
+        parts = response_text.split()
+        if len(parts) == 3:
+            raw_url, api, tutorial_link = parts
+            new_url = raw_url.replace('https://', '').replace('http://', '').replace('/', '')
+
+            valid = (
+                new_url and '.' in new_url
+                and api and len(api) > 10
+                and (tutorial_link.startswith('https://') or tutorial_link.startswith('http://'))
+            )
+
+            if valid:
+                rotation_links = list(getattr(client, 'rotation_links', []) or [])
+                while len(rotation_links) < idx + 1:
+                    rotation_links.append(None)
+                rotation_links[idx] = {'url': new_url, 'api': api, 'tutorial_link': tutorial_link}
+                client.rotation_links = rotation_links
+                await client.mongodb.update_auto_shortner_setting('rotation_links', client.rotation_links, client.bot_id)
+
+                await query.message.edit_text(
+                    f"**✓ ʀᴏᴛᴀᴛɪᴏɴ ʟɪɴᴋ {idx + 1} sᴇᴛ!**\n\n**ᴜʀʟ:** `{new_url}`",
+                    reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('◂ ʙᴀᴄᴋ', 'rotation_mode')]])
+                )
+            else:
+                await query.message.edit_text("**✗ ɪɴᴠᴀʟɪᴅ ꜰᴏʀᴍᴀᴛ! ᴄʜᴇᴄᴋ ᴜʀʟ/ᴀᴘɪ/ᴛᴜᴛᴏʀɪᴀʟ ʟɪɴᴋ.**",
+                                              reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('◂ ʙᴀᴄᴋ', 'rotation_mode')]]))
+        else:
+            await query.message.edit_text("**✗ ɪɴᴠᴀʟɪᴅ ꜰᴏʀᴍᴀᴛ! ᴜꜱᴇ: `url api tutorial_link`**",
+                                          reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('◂ ʙᴀᴄᴋ', 'rotation_mode')]]))
+    except ListenerTimeout:
+        await query.message.edit_text("**⏰ ᴛɪᴍᴇᴏᴜᴛ! ᴛʀʏ ᴀɢᴀɪɴ.**",
+                                    reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('◂ ʙᴀᴄᴋ', 'rotation_mode')]]))
+
+@Client.on_callback_query(filters.regex("^set_rotation_link_1$"))
+async def set_rotation_link_1(client: Client, query: CallbackQuery):
+    await _set_rotation_link(client, query, 0)
+
+@Client.on_callback_query(filters.regex("^set_rotation_link_2$"))
+async def set_rotation_link_2(client: Client, query: CallbackQuery):
+    await _set_rotation_link(client, query, 1)
+
+#===============================================================#
+
+@Client.on_callback_query(filters.regex("^set_rotation_timer$"))
+async def set_rotation_timer(client: Client, query: CallbackQuery):
+    if not query.from_user.id in client.admins:
+        return await query.answer('❌ ᴏɴʟʏ ᴀᴅᴍɪɴꜱ ᴄᴀɴ ᴜꜱᴇ ᴛʜɪꜱ!', show_alert=True)
+
+    await query.answer()
+
+    msg = """<blockquote>**ꜱᴇᴛ ʀᴏᴛᴀᴛɪᴏɴ ᴛɪᴍᴇʀ:**</blockquote>
+
+__ꜱᴇɴᴅ ᴛʜᴇ ɴᴜᴍʙᴇʀ ᴏꜰ ʜᴏᴜʀꜱ (ᴇ.ɢ. `2`) ɪɴ ᴛʜᴇ ɴᴇxᴛ 60 ꜱᴇᴄᴏɴᴅꜱ!__"""
+
+    await query.message.edit_text(msg)
+    try:
+        res = await client.listen(user_id=query.from_user.id, filters=filters.text, timeout=60)
+        raw = res.text.strip()
+        try:
+            hours = float(raw)
+        except ValueError:
+            hours = -1
+
+        if hours <= 0:
+            return await query.message.edit_text("**✗ ɪɴᴠᴀʟɪᴅ! ꜱᴇɴᴅ ᴀ ᴘᴏꜱɪᴛɪᴠᴇ ɴᴜᴍʙᴇʀ ᴏꜰ ʜᴏᴜʀꜱ.**",
+                                                 reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('◂ ʙᴀᴄᴋ', 'rotation_mode')]]))
+
+        client.rotation_timer_hours = hours
+        await client.mongodb.update_auto_shortner_setting('rotation_timer_hours', hours, client.bot_id)
+
+        await query.message.edit_text(f"**✓ ʀᴏᴛᴀᴛɪᴏɴ ᴛɪᴍᴇʀ ꜱᴇᴛ ᴛᴏ `{hours}` ʜᴏᴜʀ(ꜱ)!**",
+                                      reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('◂ ʙᴀᴄᴋ', 'rotation_mode')]]))
+    except ListenerTimeout:
+        await query.message.edit_text("**⏰ ᴛɪᴍᴇᴏᴜᴛ! ᴛʀʏ ᴀɢᴀɪɴ.**",
+                                    reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('◂ ʙᴀᴄᴋ', 'rotation_mode')]]))
