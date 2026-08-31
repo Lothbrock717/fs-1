@@ -174,10 +174,17 @@ class Bot(Client):
             auto_settings = await self.mongodb.get_auto_shortner_settings(self.bot_id)
             self.auto_shorteners = auto_settings.get('shorteners', [])
             self.auto_shortener_enabled = auto_settings.get('enabled', False)
+            # Rotation mode — position #1 of the auto list cycles between 2 links on a timer
+            self.rotation_enabled = auto_settings.get('rotation_enabled', False)
+            self.rotation_links = auto_settings.get('rotation_links', [])
+            self.rotation_timer_hours = auto_settings.get('rotation_timer_hours', 2)
         except Exception as e:
             self.LOGGER(__name__, self.name).warning(f"Error loading auto shortner settings: {e}")
             self.auto_shorteners = []
             self.auto_shortener_enabled = False
+            self.rotation_enabled = False
+            self.rotation_links = []
+            self.rotation_timer_hours = 2
 
         # Load file prefix, caption template and custom buttons from database
         try:
