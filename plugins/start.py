@@ -4,7 +4,7 @@ from pyrogram.enums import ParseMode
 from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
 import humanize
 from config import MSG_EFFECT, OWNER_ID
-from plugins.shortner import get_short, get_active_shortener, get_auto_short
+from plugins.shortner import get_short, get_active_shortener, get_auto_short, get_effective_auto_list
 from helper.helper_func import force_sub, batch_auto_del_notification, _track_task
 from helper.helper_func import ist_today_str
 
@@ -185,7 +185,10 @@ async def start_command(client: Client, message: Message):
                 is_new_link = False  # already validated, skip shortener gate below
 
         auto_shortener_enabled = getattr(client, 'auto_shortener_enabled', False)
-        auto_shorteners_list = getattr(client, 'auto_shorteners', []) or []
+        # Effective list — position #1 is swapped for the current rotation-mode
+        # link (if rotation is on), and duplicate rotation URLs elsewhere in the
+        # list are dropped so the same link doesn't take two slots.
+        auto_shorteners_list = get_effective_auto_list(client)
         use_auto_mode = auto_shortener_enabled and bool(auto_shorteners_list)
 
         if not is_user_pro and user_id != OWNER_ID and not is_short_link and not is_token_link and is_new_link and use_auto_mode:
