@@ -667,44 +667,75 @@ __<blockquote>**≡ ꜱᴇɴᴅ ᴛʜᴇ ɴᴇᴡ ᴅᴇᴛᴀɪʟs ɪɴ ᴛʜɪ
 
 #===============================================================#
 
-@Client.on_callback_query(filters.regex("^move_auto_shortner$"))
-async def move_auto_shortner(client: Client, query: CallbackQuery):
-    """Reorder an auto link — lets an admin change which position number (#1, #2, ...) a link sits at."""
-    if not query.from_user.id in client.admins:
-        return await query.answer('❌ ᴏɴʟʏ ᴀᴅᴍɪɴꜱ ᴄᴀɴ ᴜꜱᴇ ᴛʜɪꜱ!', show_alert=True)
+def _build_reorder_markup(auto_list):
+    """Build the reorder keyboard — one row per link, with ▲/▼ buttons to swap it
+    with its neighbour. First link has no ▲, last link has no ▼."""
+    last = len(auto_list) - 1
+    rows = []
+    for i, cfg in enumerate(auto_list):
+        label = f"{i + 1}. {cfg.get('url', '?')}"
+        up_btn = InlineKeyboardButton('▲', f'move_auto_up_{i}') if i > 0 else InlineKeyboardButton(' ', 'noop_reorder')
+        down_btn = InlineKeyboardButton('▼', f'move_auto_down_{i}') if i < last else InlineKeyboardButton(' ', 'noop_reorder')
+        rows.append([InlineKeyboardButton(label, 'noop_reorder'), up_btn, down_btn])
+    rows.append([InlineKeyboardButton('◂ ʙᴀᴄᴋ', 'auto_shortner')])
+    return InlineKeyboardMarkup(rows)
 
-    await query.answer()
-
+async def _render_reorder_panel(client, query):
     auto_list = getattr(client, 'auto_shorteners', []) or []
     if len(auto_list) < 2:
         return await query.message.edit_text("**✗ ɴᴇᴇᴅ ᴀᴛ ʟᴇᴀꜱᴛ 2 ʟɪɴᴋs ᴛᴏ ʀᴇᴏʀᴅᴇʀ!**",
                                              reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('◂ ʙᴀᴄᴋ', 'auto_shortner')]]))
 
-    listing = "\n".join(f"**{i}.** `{cfg.get('url', '?')}`" for i, cfg in enumerate(auto_list, start=1))
-    msg = f"""<blockquote>**ʀᴇᴏʀᴅᴇʀ ᴀᴜᴛᴏ ʟɪɴᴋ:**</blockquote>
-{listing}
+    msg = """<blockquote>**ʀᴇᴏʀᴅᴇʀ ᴀᴜᴛᴏ ʟɪɴᴋꜱ:**</blockquote>
+__ᴛᴀᴘ ▲ ᴏʀ ▼ ɴᴇxᴛ ᴛᴏ ᴀ ʟɪɴᴋ ᴛᴏ ꜱᴡᴀᴘ ɪᴛꜱ ᴘʟᴀᴄᴇ. ᴛᴀᴘ ʙᴀᴄᴋ ᴡʜᴇɴ ᴅᴏɴᴇ.__"""
 
-__ꜱᴇɴᴅ ᴛʜᴇ ᴄᴜʀʀᴇɴᴛ ɴᴜᴍʙᴇʀ ᴀɴᴅ ᴛʜᴇ ɴᴇᴡ ɴᴜᴍʙᴇʀ, ꜱᴇᴘᴀʀᴀᴛᴇᴅ ʙʏ ᴀ ꜱᴘᴀᴄᴇ (ᴇ.ɢ. `3 1`), ɪɴ ᴛʜᴇ ɴᴇxᴛ 60 ꜱᴇᴄᴏɴᴅꜱ!__"""
+    await query.message.edit_text(msg, reply_markup=_build_reorder_markup(auto_list))
 
-    await query.message.edit_text(msg)
-    try:
-        res = await client.listen(user_id=query.from_user.id, filters=filters.text, timeout=60)
-        parts = res.text.strip().split()
-        if (
-            len(parts) == 2 and all(p.isdigit() for p in parts)
-            and 1 <= int(parts[0]) <= len(auto_list) and 1 <= int(parts[1]) <= len(auto_list)
-        ):
-            from_idx, to_idx = int(parts[0]) - 1, int(parts[1]) - 1
-            item = client.auto_shorteners.pop(from_idx)
-            client.auto_shorteners.insert(to_idx, item)
-            await save_auto_shorteners(client)
-            await query.message.edit_text(
-                f"**✓ ᴍᴏᴠᴇᴅ `{item.get('url', '?')}` ᴛᴏ #{to_idx + 1}!**",
-                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('◂ ʙᴀᴄᴋ', 'auto_shortner')]])
-            )
-        else:
-            await query.message.edit_text(f"**✗ ɪɴᴠᴀʟɪᴅ! ꜱᴇɴᴅ ᴛᴡᴏ ɴᴜᴍʙᴇʀꜱ ʙᴇᴛᴡᴇᴇɴ 1-{len(auto_list)}, ᴇ.ɢ. `3 1`.**",
-                                          reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('◂ ʙᴀᴄᴋ', 'auto_shortner')]]))
-    except ListenerTimeout:
-        await query.message.edit_text("**⏰ ᴛɪᴍᴇᴏᴜᴛ! ᴛʀʏ ᴀɢᴀɪɴ.**",
-                                    reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton('◂ ʙᴀᴄᴋ', 'auto_shortner')]]))
+@Client.on_callback_query(filters.regex("^move_auto_shortner$"))
+async def move_auto_shortner(client: Client, query: CallbackQuery):
+    """Reorder auto links — lets an admin swap link positions using ▲/▼ buttons."""
+    if not query.from_user.id in client.admins:
+        return await query.answer('❌ ᴏɴʟʏ ᴀᴅᴍɪɴꜱ ᴄᴀɴ ᴜꜱᴇ ᴛʜɪꜱ!', show_alert=True)
+
+    await query.answer()
+    await _render_reorder_panel(client, query)
+
+#===============================================================#
+
+@Client.on_callback_query(filters.regex("^noop_reorder$"))
+async def noop_reorder(client: Client, query: CallbackQuery):
+    await query.answer()
+
+#===============================================================#
+
+@Client.on_callback_query(filters.regex(r"^move_auto_up_\d+$"))
+async def move_auto_up(client: Client, query: CallbackQuery):
+    if not query.from_user.id in client.admins:
+        return await query.answer('❌ ᴏɴʟʏ ᴀᴅᴍɪɴꜱ ᴄᴀɴ ᴜꜱᴇ ᴛʜɪꜱ!', show_alert=True)
+
+    idx = int(query.data.rsplit('_', 1)[1])
+    auto_list = getattr(client, 'auto_shorteners', []) or []
+    if idx <= 0 or idx >= len(auto_list):
+        return await query.answer()
+
+    auto_list[idx - 1], auto_list[idx] = auto_list[idx], auto_list[idx - 1]
+    await save_auto_shorteners(client)
+    await query.answer(f"✓ ᴍᴏᴠᴇᴅ ᴛᴏ #{idx}!")
+    await _render_reorder_panel(client, query)
+
+#===============================================================#
+
+@Client.on_callback_query(filters.regex(r"^move_auto_down_\d+$"))
+async def move_auto_down(client: Client, query: CallbackQuery):
+    if not query.from_user.id in client.admins:
+        return await query.answer('❌ ᴏɴʟʏ ᴀᴅᴍɪɴꜱ ᴄᴀɴ ᴜꜱᴇ ᴛʜɪꜱ!', show_alert=True)
+
+    idx = int(query.data.rsplit('_', 1)[1])
+    auto_list = getattr(client, 'auto_shorteners', []) or []
+    if idx < 0 or idx >= len(auto_list) - 1:
+        return await query.answer()
+
+    auto_list[idx + 1], auto_list[idx] = auto_list[idx], auto_list[idx + 1]
+    await save_auto_shorteners(client)
+    await query.answer(f"✓ ᴍᴏᴠᴇᴅ ᴛᴏ #{idx + 2}!")
+    await _render_reorder_panel(client, query)
