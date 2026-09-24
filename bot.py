@@ -62,8 +62,8 @@ class Bot(Client):
         except Exception as e:
             self.LOGGER(__name__, self.name).warning(f"Error ensuring DB indexes: {e}")
 
-        # Static FSUBS from config.py are intentionally ignored.
-        # Force-sub channels are managed only via bot settings (stored in the database).
+        # FSUBS in config.py is intentionally ignored.
+        # Force-sub channels are loaded only from the database (set via bot settings).
 
         # Load dynamically added fsub channels from database
         try:
