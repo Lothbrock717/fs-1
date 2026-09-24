@@ -62,29 +62,8 @@ class Bot(Client):
         except Exception as e:
             self.LOGGER(__name__, self.name).warning(f"Error ensuring DB indexes: {e}")
 
-        # Load fsub channels from static config first
-        if len(self.fsub) > 0:
-            for channel in self.fsub:
-                try:
-                    chat = await self.get_chat(channel[0])
-                    name = chat.title
-                    link = None
-                    if not channel[1]:
-                        link = chat.invite_link
-                    if not link and not channel[2]:
-                        chat_link = await self.create_chat_invite_link(channel[0], creates_join_request=channel[1])
-                        link = chat_link.invite_link
-                    if not channel[1]:
-                        self.fsub_dict[channel[0]] = [name, link, False, 0]
-                    if channel[1]:
-                        self.fsub_dict[channel[0]] = [name, link, True, 0]
-                        self.req_channels.append(channel[0])
-                    if channel[2] > 0:
-                        self.fsub_dict[channel[0]] = [name, None, channel[1], channel[2]]
-                except Exception as e:
-                    self.LOGGER(__name__, self.name).warning("Bot can't Export Invite link from Force Sub Channel!")
-                    self.LOGGER(__name__, self.name).warning("\nBot Stopped.")
-                    sys.exit()
+        # Static FSUBS from config.py are intentionally ignored.
+        # Force-sub channels are managed only via bot settings (stored in the database).
 
         # Load dynamically added fsub channels from database
         try:
