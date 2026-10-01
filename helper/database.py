@@ -679,6 +679,51 @@ class MongoDB:
         current_data.pop(str(channel_id), None)
         await self.set_fsub_channels(current_data, bot_id)
 
+    # ✅ GLOBAL FORCED FSUB (shared by EVERY bot that uses this same DB)
+    # - forced list : channels every linked bot must use as fsub
+    # - banned list : channels removed from every linked bot and kept out
+    #                 until they are added again via Forced FSUB
+
+    _FORCED_FSUB_ID = "global_forced_fsub"
+    _BANNED_FSUB_ID = "global_banned_fsub"
+
+    async def get_forced_fsub(self) -> dict:
+        data = await self.user_data.find_one({"_id": self._FORCED_FSUB_ID})
+        return data.get("channels", {}) if data else {}
+
+    async def get_banned_fsub(self) -> list:
+        data = await self.user_data.find_one({"_id": self._BANNED_FSUB_ID})
+        return data.get("ids", []) if data else []
+
+    async def add_forced_fsub(self, channel_id: int, channel_data: list):
+        """Add a channel to the global forced list (this also lifts any ban on it)."""
+        await self.user_data.update_one(
+            {"_id": self._FORCED_FSUB_ID},
+            {"$set": {f"channels.{channel_id}": channel_data}},
+            upsert=True
+        )
+        await self.user_data.update_one(
+            {"_id": self._BANNED_FSUB_ID},
+            {"$pull": {"ids": channel_id}}
+        )
+
+    async def ban_fsub_channel(self, channel_id: int):
+        """Ban a channel everywhere: add to the banned list and purge it from the
+        forced list and from the own fsub list of every bot sharing this DB."""
+        await self.user_data.update_one(
+            {"_id": self._BANNED_FSUB_ID},
+            {"$addToSet": {"ids": channel_id}},
+            upsert=True
+        )
+        await self.user_data.update_one(
+            {"_id": self._FORCED_FSUB_ID},
+            {"$unset": {f"channels.{channel_id}": ""}}
+        )
+        await self.user_data.update_many(
+            {"_id": {"$regex": "^fsub_channels_"}},
+            {"$unset": {f"channels.{channel_id}": ""}}
+        )
+
     # ✅ DB CHANNELS FUNCTIONS (namespaced)
 
     async def set_db_channels(self, db_channels_data: dict, bot_id: str = "default"):
