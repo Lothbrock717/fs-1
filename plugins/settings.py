@@ -107,7 +107,8 @@ async def fsub(client, query):
             channel_name = channel_data[0] if channel_data and len(channel_data) > 0 else "Unknown"
             request_status = "✓ ʀᴇѦᴜᴇsᴛ" if channel_data[2] else "✗ ʀᴇѦᴜᴇsᴛ"
             timer_status = f"ᴛɪᴍᴇʀ: {channel_data[3]}ᴍ" if channel_data[3] > 0 else "ᴛɪᴍᴇʀ: ∞"
-            channel_list.append(f"• `{channel_name}` (`{channel_id}`) - {request_status}, {timer_status}")
+            forced_tag = " 🌐" if channel_id in getattr(client, 'forced_fsub_ids', ()) else ""
+            channel_list.append(f"• `{channel_name}` (`{channel_id}`) - {request_status}, {timer_status}{forced_tag}")
         channels_display = "\n".join(channel_list)
     else:
         channels_display = "_ɴᴏ ꜰᴏʀᴄᴇ sᴜʙsᴄʀɪᴘᴛɪᴏɴ ᴄʜᴀɴɴᴇʟs ᴄᴏɴғɪɢᴜʀᴇᴅ_"
@@ -119,6 +120,7 @@ __ᴜsᴇ ᴛʜᴇ ᴀᴘᴘʀᴏᴘʀɪᴀᴛᴇ ʙᴜᴛᴛᴏɴ ʙᴇʟᴏᴡ
 """
     reply_markup = InlineKeyboardMarkup([
         [InlineKeyboardButton('›› ᴀᴅᴅ ᴄʜᴀɴɴᴇʟ', 'add_fsub'), InlineKeyboardButton('›› ʀᴇᴍᴏᴠᴇ ᴄʜᴀɴɴᴇʟ', 'rm_fsub')],
+        [InlineKeyboardButton('›› ꜰᴏʀᴄᴇᴅ ꜰꜱᴜʙ', 'forced_fsub')],
         [InlineKeyboardButton('‹ ʙᴀᴄᴋ', 'settings')]
     ])
     await query.message.edit_text(msg, reply_markup=reply_markup)
