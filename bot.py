@@ -32,6 +32,9 @@ class Bot(Client):
         self.fsub = fsub
         self.owner = OWNER_ID
         self.fsub_dict = {}
+        self.forced_fsub_ids = set()   # channel ids that come from the global Forced FSUB list
+        self._fsub_synced = False
+        self._fsub_task = None
         self.admins = admins + [OWNER_ID] if OWNER_ID not in admins else admins
         self.messages = messages
         self.auto_del = auto_del
@@ -65,27 +68,14 @@ class Bot(Client):
         # FSUBS in config.py is intentionally ignored.
         # Force-sub channels are loaded only from the database (set via bot settings).
 
-        # Load dynamically added fsub channels from database
+        # Load fsub channels: this bot's own list + the global Forced FSUB list
+        # (shared by every bot on this DB), minus globally banned channels.
         try:
-            db_fsub_channels = await self.mongodb.get_fsub_channels(self.bot_id)
-            for channel_id_str, channel_data in db_fsub_channels.items():
-                channel_id = int(channel_id_str)
-                if channel_id in self.fsub_dict:
-                    continue
-                try:
-                    chat = await self.get_chat(channel_id)
-                    name = chat.title
-                    channel_data[0] = name
-                    self.fsub_dict[channel_id] = channel_data
-                    if channel_data[2]:
-                        self.req_channels.append(channel_id)
-                except Exception as e:
-                    self.LOGGER(__name__, self.name).warning(f"Could not load dynamic fsub channel {channel_id}: {e}")
-                    await self.mongodb.remove_fsub_channel(channel_id, self.bot_id)
+            await self.sync_fsub()
         except Exception as e:
-            self.LOGGER(__name__, self.name).warning(f"Error loading dynamic fsub channels: {e}")
-
-        await self.mongodb.set_channels(self.req_channels)
+            self.LOGGER(__name__, self.name).warning(f"Error loading fsub channels: {e}")
+        # Keep picking up Forced FSUB adds/bans made from any linked bot
+        self._fsub_task = asyncio.create_task(self._fsub_sync_loop())
 
         # Load DB channels from database
         try:
@@ -219,7 +209,66 @@ class Bot(Client):
             self.LOGGER(__name__, self.name).warning(f"Failed to send restart notification to owner: {e}")
         
         self.username = usr_bot_me.username
+    async def sync_fsub(self):
+        """Rebuild fsub_dict = own channels + global forced channels - banned channels.
+        Safe to call repeatedly; never deletes anything from the DB."""
+        banned = {int(x) for x in await self.mongodb.get_banned_fsub()}
+        own = await self.mongodb.get_fsub_channels(self.bot_id)
+        forced = await self.mongodb.get_forced_fsub()
+        old = self.fsub_dict
+        new, forced_ids = {}, set()
+
+        for source, is_forced in ((own, False), (forced, True)):  # forced overrides own
+            for cid_str, data in source.items():
+                try:
+                    cid = int(cid_str)
+                except (TypeError, ValueError):
+                    continue
+                if cid in banned or not isinstance(data, list) or len(data) != 4:
+                    continue
+                data = list(data)
+                if cid in old:
+                    data[0] = old[cid][0]          # reuse cached name
+                else:
+                    try:
+                        data[0] = (await self.get_chat(cid)).title
+                    except Exception as e:
+                        self.LOGGER(__name__, self.name).warning(f"Could not load fsub channel {cid}: {e}")
+                        continue
+                if data[3] == 0 and not data[1]:
+                    try:
+                        link = await self.create_chat_invite_link(cid, creates_join_request=data[2])
+                        data[1] = link.invite_link
+                    except Exception as e:
+                        self.LOGGER(__name__, self.name).warning(f"Could not create invite link for {cid}: {e}")
+                new[cid] = data
+                if is_forced:
+                    forced_ids.add(cid)
+
+        self.fsub_dict = new                      # swap, don't mutate (handlers may be iterating)
+        self.forced_fsub_ids = forced_ids
+        req = [cid for cid, d in new.items() if d[2]]
+        if req != self.req_channels or not self._fsub_synced:
+            self.req_channels = req
+            try:
+                await self.mongodb.set_channels(req)
+            except Exception as e:
+                self.LOGGER(__name__, self.name).warning(f"Could not save req channels: {e}")
+        self._fsub_synced = True
+
+    async def _fsub_sync_loop(self, interval: int = 30):
+        while True:
+            await asyncio.sleep(interval)
+            try:
+                await self.sync_fsub()
+            except asyncio.CancelledError:
+                raise
+            except Exception as e:
+                self.LOGGER(__name__, self.name).warning(f"fsub sync failed: {e}")
+
     async def stop(self, *args):
+        if self._fsub_task:
+            self._fsub_task.cancel()
         await super().stop()
         self.LOGGER(__name__, self.name).info("Bot stopped.")
 
